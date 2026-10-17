@@ -370,6 +370,14 @@ The decisive measurement for the reset bug was counting real commands on `{SDRAM
 SDRAM_nWE}`. Delivery counters and FSM accept-condition counters both looked perfect; only the pin
 count showed zero writes. Measure the last observable stage.
 
+### [DreamWorld] MAME's PORT_DIPUNUSED with IP_ACTIVE_LOW defaults the bit to 1; parse the name, not just numbers
+
+dreamwld.cpp writes `PORT_DIPUNUSED_DIPLOC( 0x0004, IP_ACTIVE_LOW, "SW2:3" )`. `extract_dips.py`
+matched only numeric defaults, skipped those lines, and lost the unused bits' defaults: the `.mra`
+default byte would have had them clear. MAME expands the macro to `PORT_SPECIAL_ONOFF(mask,
+default, ...)`, whose "Off" value is `mask & default`, so `IP_ACTIVE_LOW` means the bit reads 1.
+After the fix the defaults equal the ports' (dreamwld FFFF, gaialast FEF1).
+
 ## Memory transport: req/valid contracts, latency, byte order
 
 ### Give a registered RAM its full read latency before consuming the data
@@ -832,6 +840,14 @@ pair before the RTL around it.
   Write the bench arguments (coin schedule, DIPs, start presses) into the capture's manifest and make
   the comparison script refuse a mismatch.
 
+### [DreamWorld] A frame bench with the CPU paused has no memory contention
+
+`sim/frame_tb` loaded MAME state with the 68020 paused and matched MAME on every scene, while the
+board cut 86 sprite lines a frame after coin-up: the sprite engine's spritelut reads share an SDRAM
+port with the CPU's program fetches, and in the bench nothing else asked for it. The bench now
+drives a program-ROM read every n clk through the CPU's own request port (`+CPUTRAFFIC`), and the
+overlay's per-line counters (worst render time, lines cut) are the number to read on the board.
+
 ## Timing closure
 
 - **[BallySente] Ask the timing analyser which path fails; do not reason about it.** A filter
@@ -1022,6 +1038,13 @@ target is the reset entry. Not proven that the extra IRQ caused the restart -- a
 instruction lowering the mask to 0. Dump the vector table before deciding a board's interrupts; an
 ack address that is also an input port must acknowledge on writes only.
 
+### [DreamWorld] TG68K's CLR reads its operand before writing, as a 68000; a 68020 and MAME's model do not
+
+The boot bench traced 18,436 reads MAME's 68EC020 never made: every one the first half of a
+`CLR.L (A0)+` (opcode 0x4298), the read the 68000 makes and the 68020 dropped. Harmless where no
+read has a side effect; on an address whose read acknowledges something (a latch, a FIFO), a `CLR`
+would fire it. Check the map's read-side-effect addresses against the program before trusting it.
+
 ## Quartus synthesis gotchas (not visible in ModelSim)
 
 - **Non-blocking assignments to block-local (`automatic`) variables are rejected**, even with
@@ -1069,6 +1092,14 @@ ack address that is also an input port must acknowledge on writes only.
 - **[GX] Quartus 17 rejects `for (genvar i = ...)`** (`Error (10170)`); declare `genvar i;` before
   the `generate`.
 - **`quartus_map` alone is a fast pre-check** for whether a change elaborates.
+
+### [DreamWorld] A memory with per-lane writes in the same block as an enabled read was built from registers
+
+`logic [15:0] rom [0:4095]` written as `if (be[0]) rom[a][7:0] <= ...; if (be[1]) rom[a][15:8]
+<= ...` in one `always_ff` with `if (cen) q <= rom[ra]` was not inferred as RAM by Quartus 17:
+65,536 registers, 134% of the ALMs, no fit. ModelSim was content. Two byte-wide arrays, each with
+one write and one read in its own block, inferred at once. Read the map report's per-entity
+register count after adding any memory: a RAM that became flip-flops shows there first.
 
 ## Debug instrumentation: how not to fool yourself
 
@@ -1204,6 +1235,29 @@ ack address that is also an input port must acknowledge on writes only.
   memory dumped as it is on x86. A bench loading it big-endian ran identically to MAME for 700
   frames until the game's first settings read.
 
+### [DreamWorld] compare_boot_trace.py counted RAM reads as I/O reads
+
+Its docstring says ROM and work-RAM ranges are not I/O; the compare step excluded only ROM. A CPU
+core that reads RAM where MAME's does not (TG68K's CLR, above) then showed thousands of "I/O read"
+mismatches. The compare now excludes `regions.json` "trace" "ram", which must list every RAM the
+CPU can read, video RAMs included.
+
+### [DreamWorld] A vblank copy of RAM is that RAM read one frame earlier
+
+A frame drawn from a copy taken at vblank (`screen_vblank` copying sprite RAM) cannot be
+reproduced from the RAM dumped at the capture frame: the copy is a frame older. MAME runs the
+frame notifier inside `vblank_begin`, after drawing and before `screen_vblank`, with no CPU time
+between, so the RAM read in frame N-1's notifier is the copy frame N is drawn from
+(`regions.json` "prev"; byte-identical to the driver's save item on three dreamwld scenes). The
+save item itself, through `manager.machine.devices[":"].items`, was missing from rolcrush's
+table though the driver is the same.
+
+### [DreamWorld] MAME's snapshot of a ROT270 set is the native frame turned 180 degrees
+
+`screen:snapshot()` renders through the native view's render target, so a ROT270 set comes back
+at its native 308 x 224, flipped in both axes. Every baryon scene matched the model exactly once
+turned back; compared as-is, eight of nine failed.
+
 ## Hardware bring-up (MiSTer / DE10-nano)
 
 - **The SDRAM pinout has an authoritative in-repo reference.** The `.qsf` does `source sys/sys.tcl`;
@@ -1241,6 +1295,31 @@ ack address that is also an input port must acknowledge on writes only.
   frame apart is not a difference in the hardware.
 - **[Seta] Drive the plain `mame.exe`, not a fork build.** A fork (`arcade64.exe` and the like) is
   not the driver reference the notes cite and its Lua surface can differ.
+
+### [DreamWorld] The SDRAM_CLK phase is tuned with the controller's capture point and clk_sys
+
+Seta's `sdram.sv` takes burst beat 0 three clk_sys edges after the READ, tuned at 96 MHz and 180
+degrees. At 54 MHz and 180 the sample fell on the beat 0/1 boundary: each word read one beat
+late with bits of the earlier beat mixed in (overlay of the first ROM reads). At 0 every read
+returned 0000. 301.5 degrees, a 3.0 ns lead -- the MiSTer convention above -- read the ROM
+correctly. Moving clk_sys moves the window; re-check the phase with it.
+
+### [DreamWorld] A MiSTer screenshot does not show the HDMI rotator's output
+
+Main_MiSTer's screenshot reads the scaler's input buffer (`scaler.cpp`, 0x20000000): the core's
+raw raster, resized to the output's shape. A rotated set's screenshot is the unrotated picture in
+a 3:4 box whether the rotator works or not. To check rotation, read the rotator's frame buffer
+from DDR3 (`screen_rotate_two`, 0x24000000) with busybox `devmem` over SSH, with the game paused
+so the slow per-word reads see one frame; plain `dd` of `/dev/mem` fails there.
+
+### [DreamWorld] jt6295 restarts a playing voice; the M6295 ignores the start
+
+`okim6295::write` drops a start aimed at a voice that is playing (MAME: "fixes Got-cha and Steel
+Force"); jt6295 reloads the voice. dreamwld fades a phrase in by re-sending its start with less
+attenuation every 13.7 ms, so jt6295 restarted it, louder each time, where MAME plays it once. Found
+by replaying a MAME trace of OKI writes through the RTL against a transcription of okim6295.cpp;
+single-phrase benches cannot show it. Mask busy voices out of the second command byte in the
+wrapper.
 
 ## Tooling and workflow (Quartus, ModelSim, Verilator, and the shell around them)
 

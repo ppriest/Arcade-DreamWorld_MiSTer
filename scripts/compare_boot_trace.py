@@ -143,8 +143,10 @@ def cmd_compare(game):
     window = mame[:mame_cut]
 
     # --- non-ROM reads, in order
-    mio = [(a, m, d) for _, rw, a, m, d in window if rw == "r" and not is_rom(a)]
-    rio = [(a, m, d) for _, rw, a, m, d in rtl if rw == "r" and not is_rom(a)]
+    # RAM reads (regions.json "trace" "ram") are not I/O: they have no side effects, and a
+    # CPU core may make reads MAME's does not (TG68K's CLR reads before it writes).
+    mio = [(a, m, d) for _, rw, a, m, d in window if rw == "r" and not is_rom(a) and not is_ram(a)]
+    rio = [(a, m, d) for _, rw, a, m, d in rtl if rw == "r" and not is_rom(a) and not is_ram(a)]
     k = min(len(mio), len(rio))
     bad = next((i for i in range(k) if mio[i] != rio[i]), None)
     if bad is None and len(mio) == len(rio):

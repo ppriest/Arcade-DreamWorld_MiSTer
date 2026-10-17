@@ -1,0 +1,57 @@
+MAME 0.289, dreamwld.cpp. scripts/sprite_load.py: the drawn 4 KB of sprite RAM dumped
+at every vblank start (the list screen_vblank copies), 1800 frames per run, same runs and
+input stimulus as write_timing_mame.txt (attract --skip 600; play --coin 600 --skip 1500).
+Counts are 16-pixel tile rows per visible line (224 lines a frame), geometry from
+draw_sprites() including the wrap at 512.
+
+  rows     every block whose Y span covers the line (no X test)
+  visible  only tile columns overlapping X 0..307
+  --blank  visible rows that are not all pen 0 after the spritelut redirect
+
+Findings:
+- Every set parks its unused entries on visible lines but off-screen in X: up to 512-514
+  rows a line by Y alone. An engine must test X before fetching.
+- With X tested, the worst real scene is 113 rows on a line (rolcrush/rolcrusha attract);
+  p99.9 is 43-113 by set.
+- cutefght clears the whole list to zero between scenes: 512 entries of tile 0 at X=-12,
+  Y=0, all visible on lines 0-15. spritelut[0] in cutefght points at tile 0, which is
+  blank: nothing is drawn.
+- Non-blank visible rows: at most 64 on any line of any run; p99.9 27-46.
+
+== Attract ==
+set              frames  rows: max  p99.9  visible: max  p99.9  p99  mean  worst at (frame, line)
+dreamwld           1800        512    484            66     62   59  22.0  (2, 27)
+cutefght           1800        512    512           512    512  425  37.4  (451, 0)
+baryon             1800        514    514            76     63   47   9.7  (312, 40)
+baryona            1800        514    514            76     63   47   9.7  (312, 40)
+rolcrush           1800        512    460           113    113   89  24.0  (6, 90)
+rolcrusha          1800        512    509           113    113   89  24.3  (278, 90)
+gaialast           1800        512    512            67     61   52  13.7  (1229, 28)
+
+== Play ==
+set              frames  rows: max  p99.9  visible: max  p99.9  p99  mean  worst at (frame, line)
+dreamwld_play      1800        512    512            72     69   60  19.4  (840, 1)
+cutefght_play      1800        512    512           512    512  362  43.8  (531, 0)
+baryon_play        1800        514    512            75     57   35   8.8  (1382, 93)
+baryona_play       1800        514    512            57     46   27   7.7  (1734, 196)
+rolcrush_play      1800        487    486            52     45   38  13.7  (503, 120)
+rolcrusha_play     1800        390    383            63     54   49  22.3  (836, 120)
+gaialast_play      1800        479    476            52     43   35  13.7  (1121, 2)
+
+== Non-blank (--blank), attract then play ==
+set              frames  rows: max  p99.9  visible: max  p99.9  p99  mean  worst at (frame, line)
+dreamwld           1800        512    484            47     44   40  17.1  (593, 112)
+cutefght           1800        512    512            64     44   37  11.1  (632, 112)
+baryon             1800        514    514            55     44   31   5.8  (1347, 140)
+baryona            1800        514    514            55     44   31   5.8  (1347, 140)
+rolcrush           1800        512    460            43     43   41  12.7  (6, 56)
+rolcrusha          1800        512    509            48     43   42  12.8  (65, 97)
+gaialast           1800        512    512            49     46   39   9.1  (1644, 120)
+set              frames  rows: max  p99.9  visible: max  p99.9  p99  mean  worst at (frame, line)
+dreamwld_play      1800        512    512            47     43   40  11.9  (1478, 114)
+cutefght_play      1800        512    512            46     45   40  15.7  (794, 118)
+baryon_play        1800        514    512            59     41   21   5.6  (1380, 92)
+baryona_play       1800        514    512            39     27   16   5.1  (1515, 98)
+rolcrush_play      1800        487    486            40     34   29   8.2  (504, 113)
+rolcrusha_play     1800        390    383            43     40   35  15.3  (820, 113)
+gaialast_play      1800        479    476            43     33   27   9.0  (1121, 2)

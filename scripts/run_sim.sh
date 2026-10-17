@@ -79,6 +79,8 @@ fi
 #                           it, ModelSim's vlog does not (vlog-2730), and it
 #                           must stay UNTOUCHED -- so it is left out of
 #                           simulation rather than patched. Still synthesized.
+#   hiscore.v               vendored JimmyStones/Hiscores_MiSTer; uses ram_addr
+#                           before declaring it (vlog-2730), same as above.
 #   *_upstream_reference.*  pristine upstream copies kept beside the vendored
 #                           modules purely so local changes can be diffed.
 #   cos.sv, lfsr.v, mycore.v  Template_MiSTer's demo core. Excluded now, and to
@@ -93,7 +95,7 @@ RTL=$(find rtl -name '*.sv' \
 VLOG=$(find rtl -name '*.v' \
         -not -path 'rtl/synth_check/*' \
         -not -name 'pll*.v' \
-        -not -name 'lfsr.v' -not -name 'mycore.v' \
+        -not -name 'lfsr.v' -not -name 'mycore.v' -not -name 'hiscore.v' \
         -not -name '*_upstream_reference.v' | sort)
 
 echo "--- vlog: RTL + testbench ---"

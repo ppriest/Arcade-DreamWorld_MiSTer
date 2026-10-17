@@ -57,7 +57,9 @@ Steps for a release:
    shows this build's date and the right MRA count. Files in `unsupported/` and `_dev/` are not
    published, so keep work in progress there.
 
-**Current state:** <one line: what the latest build passes or fails, with the number>.
+**Current state:** `Arcade-DreamWorld_20261017.rbf` from `27e1ee0`, seed default, every clock met
+(worst `clk_sys` setup +4.873 ns); all seven sets boot, coin, start and pause on it
+(`docs/ROADMAP.md`, Phase 5). Staged on `develop`, not yet on `master` or pushed.
 
 ## Submitting the core upstream
 

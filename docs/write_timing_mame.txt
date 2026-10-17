@@ -1,0 +1,169 @@
+MAME 0.289, dreamwld.cpp. scripts/write_timing.py over regions.json "sweep" plus
+--extra sprlo:400000:400fff,sprhi:401000:401fff,vctrl:804400:804417.
+Attract: write_timing.py <7 sets> --skip 600 --frames 1800
+Play:    write_timing.py <7 sets> --coin 600 --skip 1500 --frames 1800 --tag _play
+Closing snapshots (debug/wtiming/snap_play/): baryon, baryona and cutefght ended in play;
+dreamwld (insert-coin demo), gaialast (game over), rolcrush and rolcrusha (demo, credit 0)
+ended out of play, so their play rows include attract frames.
+sprhi (0x401000-0x401FFF, not drawn) received no writes in any run.
+Columns: writes per frame; share in the 2 lines after vblank start, in vblank (32 lines),
+in the 24 lines after vblank start; strip of 8-line buckets from vblank start (line 224).
+
+Findings:
+- Sprite list (sprlo): the whole drawn 4 KB, ~1024 long writes a frame, every set and
+  mode, 100% inside the first 16 lines after vblank start; 17% in the first 2 lines.
+- Scroll/control (vctrl): >95% in vblank, mostly lines 8-15 after vblank start; cutefght
+  spreads over lines 8-31. Stray writes (<1%) mid-frame in some sets.
+- Row-scroll RAM (lineram): in vblank where used (cutefght, baryon, rolcrush).
+- Tile VRAM (vram0/vram1): 0.1-26 words a frame, written ACROSS the visible frame in most
+  sets, attract and play.
+- Palette: mostly vblank, but 25-50% outside vblank in some play runs (dreamwld 33%,
+  baryon 25%, gaialast 51%).
+
+== Attract ==
+dreamwld: 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram    997.3  16.9% 100.0% 100.0%  |81                              |
+  palette       19.2   1.5%  87.3%  81.6%  |0600000.                        |
+  vram0          2.6   0.0%   0.0%   0.0%  |         0000 0111111110        |
+  vram1          2.6   0.0%   0.0%   0.0%  |     0111111110                 |
+  vregs          3.9   0.0%  98.5%  97.9%  | # .....               .        |
+  sprlo        997.3  16.9% 100.0% 100.0%  |81                              |
+  vctrl          3.9   0.0%  98.5%  97.9%  | # .....               .        |
+
+cutefght: 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1020.0  17.3% 100.0% 100.0%  |#0                              |
+  palette      326.0   0.0%  95.8%  94.9%  |.#0.00                          |
+  vram0         26.3   0.0%  38.0%  23.4%  |  21.10      0000000000.        |
+  vram1         11.5   0.0%   1.3%   1.3%  | .. 0011111110       00         |
+  lineram      171.1   0.0%  96.4%  95.5%  |.81.0..      ..                 |
+  vregs          6.6   0.0%  96.7%  96.3%  |.81.0..              ..         |
+  sprlo       1020.0  17.3% 100.0% 100.0%  |#0                              |
+  vctrl          6.6   0.0%  96.7%  96.3%  |.81.0..              ..         |
+
+baryon: 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1024.0  16.9% 100.0% 100.0%  |81                              |
+  palette       62.5   0.0% 100.0% 100.0%  | #.                             |
+  vram0          7.1   0.0%  11.2%   5.5%  | 00000000000000.000000000       |
+  vram1          4.6   0.0%   0.0%   0.0%  |       000111111000     0       |
+  lineram      103.2   0.0%  99.9%  99.9%  | #              . .             |
+  vregs          3.4   0.0%  99.9%  99.9%  | #0.                 .          |
+  sprlo       1024.0  16.9% 100.0% 100.0%  |81                              |
+  vctrl          3.4   0.0%  99.9%  99.9%  | #0.                 .          |
+
+baryona: 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1024.0  16.9% 100.0% 100.0%  |81                              |
+  palette       62.5   0.0% 100.0% 100.0%  | #.                             |
+  vram0          7.1   0.0%  11.2%   5.5%  | 00000000000000.000000000       |
+  vram1          4.6   0.0%   0.0%   0.0%  |       000111111000     0       |
+  lineram      103.2   0.0%  99.9%  99.9%  | #              . .             |
+  vregs          3.4   0.0%  99.9%  99.9%  | #0.                 .          |
+  sprlo       1024.0  16.9% 100.0% 100.0%  |81                              |
+  vctrl          3.4   0.0%  99.9%  99.9%  | #0.                 .          |
+
+rolcrush: 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1020.0  17.6% 100.0% 100.0%  |#0                              |
+  palette      382.5   0.0% 100.0% 100.0%  |.#                              |
+  vram0          9.4   0.1%   4.5%   3.6%  |.00......0000000000..00.........|
+  vram1         20.2   0.0%  11.8%   7.3%  |.000000330.                    .|
+  lineram      160.9   0.2% 100.0% 100.0%  |.#                              |
+  vregs          4.0   0.0%  99.9%  99.9%  |.#                .  .          |
+  sprlo       1020.0  17.6% 100.0% 100.0%  |#0                              |
+  vctrl          4.0   0.0%  99.9%  99.9%  |.#                .  .          |
+
+rolcrusha: 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1023.4  17.6% 100.0% 100.0%  |#0                              |
+  palette      383.1   0.0% 100.0% 100.0%  |.#                              |
+  vram0          7.1   0.0%   2.2%   2.2%  |.0.      0111111110  0.         |
+  vram1         20.2   0.0%  11.8%   7.2%  | 000003300                   ...|
+  lineram      127.1   0.0% 100.0% 100.0%  |.#                              |
+  vregs          3.4   0.0% 100.0% 100.0%  |.#                .  .          |
+  sprlo       1023.4  17.6% 100.0% 100.0%  |#0                              |
+  vctrl          3.4   0.0% 100.0% 100.0%  |.#                .  .          |
+
+gaialast: 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram    977.9  16.9% 100.0% 100.0%  |81                              |
+  palette       23.6   0.8%  93.2%  89.7%  |080000.0..                      |
+  vram0         11.6   0.1%   9.0%   8.2%  |000.       .0000000000    000000|
+  vram1         11.5   0.0%   2.3%   0.0%  |   00000000000   .000000000     |
+  vregs          2.5   0.0%  99.7%  99.6%  | # .                . .         |
+  sprlo        977.9  16.9% 100.0% 100.0%  |81                              |
+  vctrl          2.5   0.0%  99.7%  99.6%  | # .                . .         |
+
+== Play ==
+dreamwld_play (coin at frame 600): 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram    995.0  16.9% 100.0% 100.0%  |81                              |
+  palette       20.2   2.5%  66.6%  56.5%  |03110000000.                    |
+  vram0          7.4   0.0%   3.1%   3.1%  |.00.     000000111110000        |
+  vram1          7.2   0.0%   3.3%   0.0%  |   000111111000                 |
+  vregs          3.3   0.0%  95.5%  94.8%  |.# .0...   .        .  .        |
+  sprlo        995.0  16.9% 100.0% 100.0%  |81                              |
+  vctrl          3.3   0.0%  95.5%  94.8%  |.# .0...   .        .  .        |
+
+cutefght_play (coin at frame 600): 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1014.9  17.3% 100.0% 100.0%  |#0                              |
+  palette      260.5   0.0%  98.9%  96.1%  |.5400                           |
+  vram0         21.0   0.0%   4.9%   1.8%  |  0000000000000000000000        |
+  vram1         21.4   0.2%   4.5%   4.5%  |00. 00000000000.     00. 0000000|
+  lineram        3.8   0.0%  86.9%  81.8%  |1140        .000                |
+  vregs          3.9   0.0%  98.2%  97.0%  | 6200     .            .        |
+  sprlo       1014.9  17.3% 100.0% 100.0%  |#0                              |
+  vctrl          3.9   0.0%  98.2%  97.0%  | 6200     .            .        |
+
+baryon_play (coin at frame 600): 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1024.0  16.9% 100.0% 100.0%  |81                              |
+  palette       92.7   0.0%  74.7%  71.3%  | 600000000000.....              |
+  vram0          7.8   0.0%  13.1%   7.6%  | 00000000000000000000000        |
+  vram1          5.5   0.0%  10.9%   8.0%  | 00000 000010000000    .0       |
+  lineram       33.7   0.0%  99.6%  99.6%  | #             .  .             |
+  vregs          2.7   0.0%  99.8%  99.8%  | #0..                .          |
+  sprlo       1024.0  16.9% 100.0% 100.0%  |81                              |
+  vctrl          2.7   0.0%  99.8%  99.8%  | #0..                .          |
+
+baryona_play (coin at frame 600): 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1023.4  16.9% 100.0% 100.0%  |81                              |
+  palette       96.3   0.0%  74.8%  70.6%  |.600000000000.....              |
+  vram0          7.9   0.0%  15.2%  11.8%  | 000000000 ...0000000000..      |
+  vram1          8.3   0.0%  11.4%   9.5%  | 000000000000000000.   ...      |
+  lineram        0.2   0.0%   0.0%   0.0%  |              33  3             |
+  vregs          2.7   0.0%  97.5%  97.3%  | #0.00               .          |
+  sprlo       1023.4  16.9% 100.0% 100.0%  |81                              |
+  vctrl          2.7   0.0%  97.5%  97.3%  | #0.00               .          |
+
+rolcrush_play (coin at frame 600): 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1024.0  17.6% 100.0% 100.0%  |#0                              |
+  palette      384.0   0.0% 100.0% 100.0%  | #                              |
+  lineram      224.0   0.0% 100.0% 100.0%  | #                              |
+  vregs          4.0   0.0% 100.0% 100.0%  | #                              |
+  sprlo       1024.0  17.6% 100.0% 100.0%  |#0                              |
+  vctrl          4.0   0.0% 100.0% 100.0%  | #                              |
+
+rolcrusha_play (coin at frame 600): 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1024.0  17.6% 100.0% 100.0%  |#0                              |
+  palette      384.0   0.0% 100.0% 100.0%  | #                              |
+  lineram      224.0   0.0% 100.0% 100.0%  | #                              |
+  vregs          4.0   0.0% 100.0% 100.0%  | #                              |
+  sprlo       1024.0  17.6% 100.0% 100.0%  |#0                              |
+  vctrl          4.0   0.0% 100.0% 100.0%  | #                              |
+
+gaialast_play (coin at frame 600): 256 lines, vblank start 224 (32 lines of vblank), 1800 frames
+  region      /frame  +0..1 vblank +0..23  from vblank start, 8 lines a column
+  spriteram   1023.4  16.9% 100.0% 100.0%  |81                              |
+  palette        5.1   0.1%  48.8%  41.9%  |.30000000000.                   |
+  vram0          0.1   0.0% 100.0% 100.0%  | #0                             |
+  vram1          0.4   0.0% 100.0% 100.0%  | #                              |
+  vregs          3.4   0.0% 100.0% 100.0%  | #                              |
+  sprlo       1023.4  16.9% 100.0% 100.0%  |81                              |
+  vctrl          3.4   0.0% 100.0% 100.0%  | #                              |

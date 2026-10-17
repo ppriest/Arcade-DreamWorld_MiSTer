@@ -21,6 +21,28 @@ set fields_F {
     {frames           0  15 dec}
     {pll_locked     127 127 bit}
 }
+# maincpu.sv: the 68020's last fetch and the boot's progress
+set fields_C {
+    {fetch_addr       0  23 hex}
+    {iacks           24  39 dec}
+    {prot_writes     40  55 dec}
+    {prot_reads      56  71 dec}
+    {palette_writes  72  87 dec}
+    {rom_reads       88 103 dec}
+    {reset          104 104 bit}
+    {pause          105 105 bit}
+    {irq_pending    106 106 bit}
+}
+# semicom_mcu.sv: the protection MCU
+set fields_M {
+    {mcu_fetch        0  15 hex}
+    {port2           16  23 hex}
+    {latch           24  31 hex}
+    {port1           32  39 hex}
+    {p2_writes       40  55 dec}
+    {latch_loads     56  71 dec}
+    {reset           72  72 bit}
+}
 # ---------------------------------------------------------------------------
 
 proc bits_to_int {s lo hi} {
@@ -86,6 +108,8 @@ if {$want ne ""} {
 # than guesses.
 switch -- $inst_id {
     F       { set fields $fields_F }
+    C       { set fields $fields_C }
+    M       { set fields $fields_M }
     default {
         puts "instance id '$inst_id' has no field table -- add one before reading it"
         exit 1

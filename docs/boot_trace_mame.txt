@@ -1,0 +1,31 @@
+dreamwld boot in MAME 0.289, the reference for the RTL CPU's boot (scripts/compare_boot_trace.py).
+
+  python scripts/mame_boot_trace.py dreamwld 3000000 --seconds 30
+      -> debug/dreamwld-boot/dreamwld_boot.trace   (every bus access from reset)
+  python scripts/mame_sys_trace.py dreamwld 300
+      -> debug/dreamwld-sys/dreamwld_sys.trace     (writes, I/O reads 0xC00000-0xC0003F,
+                                                    vector reads; per frame, with the IPL mask)
+
+Reset vectors: SP 0xFFFF7000, PC 0x000000C6. Autovectors for levels 3-7 point at 0xFFD000
+in work RAM (ROM longwords 0x6C-0x7C); level 2 at 0x6C9, level 1 at 0x100000.
+
+Sequence (frame, access number):
+  frame 1, #20       palette 0x600000-0x601FFF written, 4096 accesses
+  frame 1, #36889    sprite RAM written (1027 accesses), then video RAM (8194)
+  frame 1, #151994   byte write 0x01 to 0xC00010 (dreamwld.cpp: "might reset the MCU",
+                     not modelled)
+  frame 1, #152185   first DSW read 0xC00004, then inputs 0xC00000
+  frame 55, #285395  protection handshake starts: byte write 0x00 to 0xC00020, then byte
+                     read of 0xC00030 (data in bits 31:24), five accesses apart, 1737 times,
+                     through frame 101. The bytes are 87c51rap.bin from offset 0x3C,
+                     contiguous (19 B8 D5 D3 ...). The game transforms them and stores the
+                     result from 0xFFD000 (first long written 48 E7 FF FE).
+  frame 101          IPL mask drops from 7 to 3: the level-4 vblank handler at 0xFFD000
+                     runs every frame from here
+  frame 101, #305002 first OKI accesses: status read 0xC00018 / 0xC00028 (0xF0), command
+                     write 0x80
+
+Timing note for the RTL: MAME stalls the 68020 50 us on every C00020 write and every C00030
+read (to_prot_w / protdata_r, spin_until_time) to "give it time to respond". The 68020 code
+does not poll; it reads five bus accesses after it writes. The RTL has to make the 68020 wait
+for the MCU on those accesses; how long the board waited is not known.

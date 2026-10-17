@@ -1,0 +1,19 @@
+{"groups": [
+  {"name": "Debug probes",       "match": "u_issp|g_tracer",                                     "color": "#000000"},
+  {"name": "Main CPU 68EC020",   "match": "u_core\\|u_cpu",                                      "color": "#e6194b"},
+  {"name": "MCU 87C52",          "match": "u_core\\|u_mcu",                                      "color": "#ffe119"},
+  {"name": "Sound OKI x2",       "match": "u_core\\|u_sound|u_sdram\\|u_oki[12]_cache",          "color": "#f58231"},
+  {"name": "Tilemaps",           "match": "u_core\\|u_layer[01]",                                "color": "#3cb44b"},
+  {"name": "Line buffers",       "match": "u_core\\|u_sprite_linebuf",                           "color": "#aaffc3"},
+  {"name": "Sprites",            "match": "u_core\\|(u_sprite_list|u_sprite_line|u_spriteram)",   "color": "#42d4f4"},
+  {"name": "VRAM + vregs",       "match": "u_core\\|(u_vram[01]|u_vregs)",                       "color": "#f032e6"},
+  {"name": "Palette",            "match": "u_core\\|u_palette",                                  "color": "#fabed4"},
+  {"name": "Work RAM",           "match": "u_core\\|u_workram",                                  "color": "#911eb4"},
+  {"name": "Core other",         "match": "^emu\\|dreamworld_top\\|u_core",                     "color": "#bfef45"},
+  {"name": "SDRAM",              "match": "dreamworld_top\\|u_sdram",                            "color": "#4363d8"},
+  {"name": "ROM loader",         "match": "^emu\\|(u_rom_loader|u_ldr_ddram)",                   "color": "#fffac8"},
+  {"name": "Hiscore",            "match": "^emu\\|u_hiscore",                                    "color": "#800000"},
+  {"name": "CRT Adjust",         "match": "^emu\\|crt_chain",                                    "color": "#dcbeff"},
+  {"name": "Video mixer/scaler", "match": "^emu\\|(arcade_video|video_freak|screen_rotate_two)", "color": "#808000"},
+  {"name": "hps_io",             "match": "^emu\\|hps_io",                                       "color": "#469990"}
+]}

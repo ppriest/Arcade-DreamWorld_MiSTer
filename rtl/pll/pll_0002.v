@@ -1,4 +1,13 @@
 `timescale 1ns/10ps
+// clk_sys and SDRAM_CLK, both 54 MHz from the 50 MHz reference (docs/ROADMAP.md, Clocks):
+// 54 = 27 MHz x 2, an integer multiple of the board's 6.75 MHz pixel clock (ce_pix /8).
+// outclk_1 is SDRAM_CLK, the same frequency 301.5 degrees behind (15509 ps: 67 VCO steps of
+// 231.5 ps). sdram.sv takes burst beat 0 from DQ three clk_sys edges after the READ.
+// At 180 degrees that sample fell on the beat 0/1 boundary (debug/hw/stp_first128.png); at
+// 0 every read returned 0000 or 1B00 (debug/hw/stp0_first128.png), the chip's edge then
+// coinciding with the command change (cause not checked). From the 180 degree boundary,
+// 301.5 puts the sample about 8 ns into beat 0 and the command change about 3 ns after the
+// chip's previous edge. Not swept.
 module  pll_0002(
 
 	// interface 'refclk'
@@ -10,6 +19,9 @@ module  pll_0002(
 	// interface 'outclk0'
 	output wire outclk_0,
 
+	// interface 'outclk1'
+	output wire outclk_1,
+
 	// interface 'locked'
 	output wire locked
 );
@@ -18,12 +30,12 @@ module  pll_0002(
 		.fractional_vco_multiplier("false"),
 		.reference_clock_frequency("50.0 MHz"),
 		.operation_mode("direct"),
-		.number_of_clocks(1),
-		.output_clock_frequency0("20.000000 MHz"),
+		.number_of_clocks(2),
+		.output_clock_frequency0("54.0 MHz"),
 		.phase_shift0("0 ps"),
 		.duty_cycle0(50),
-		.output_clock_frequency1("0 MHz"),
-		.phase_shift1("0 ps"),
+		.output_clock_frequency1("54.0 MHz"),
+		.phase_shift1("15509 ps"),
 		.duty_cycle1(50),
 		.output_clock_frequency2("0 MHz"),
 		.phase_shift2("0 ps"),
@@ -77,7 +89,7 @@ module  pll_0002(
 		.pll_subtype("General")
 	) altera_pll_i (
 		.rst	(rst),
-		.outclk	({outclk_0}),
+		.outclk	({outclk_1, outclk_0}),
 		.locked	(locked),
 		.fboutclk	( ),
 		.fbclk	(1'b0),
