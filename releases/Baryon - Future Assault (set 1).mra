@@ -12,7 +12,7 @@
     <rotation>vertical (ccw)</rotation>
     <players>2</players>
     <joystick>8-way</joystick>
-    <buttons names="Shot,Bomb,Bomb,-,-,-,Start,Coin,Pause" default="A,B,X,Start,Select,R" count="3"/>
+    <buttons names="Shot,Bomb,-,-,-,-,Start,Coin,Pause" default="A,B,Start,Select,R" count="2"/>
 
     <!-- mod byte (DreamWorld.sv): [0] the second OKI (dreamwld_map), [2:1] orientation -->
     <rom index="1"><part>04</part></rom>

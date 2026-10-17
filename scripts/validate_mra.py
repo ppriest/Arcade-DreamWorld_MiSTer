@@ -41,6 +41,9 @@ Checks:
      (joymapping.cpp, map_joystick) skips the "-" names and gives the n-th
      default to the n-th named button, so a list written for three buttons
      shifts Start, Coin and Pause onto other pad buttons in a one-button game.
+  9. No <buttons names> entry other than "-" appears twice. Define buttons
+     prompts by name and ignores a pad button already taken in the same pass
+     (input.cpp), so a repeated name reads as one prompt refusing the button.
 
 Usage:
     python scripts/validate_mra.py releases/*.mra
@@ -200,6 +203,13 @@ def check(path, rotations, allow_generic_buttons=False, installed=None):
         for n, d in zip(named, defs):
             if n.lower() in want and d.lower() != want[n.lower()]:
                 problems.append('<buttons default> puts %s on the pad\'s %s (pairs: %s)' % (n, d, pairs))
+
+    if b is not None:
+        seen = [n.strip() for n in (b.get('names') or '').split(',') if n.strip() and n.strip() != '-']
+        dup = sorted({n for n in seen if seen.count(n) > 1})
+        if dup:
+            problems.append('<buttons names> repeats %s: Define buttons shows the same prompt twice '
+                            'and refuses the pad button given to the first' % ', '.join(dup))
 
     if not allow_generic_buttons:
         gen = generic_buttons(root)

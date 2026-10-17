@@ -122,7 +122,7 @@ with a `mister.env` (see `scripts/deploy.py`).
 |-|-|-|-|
 | Dream World | Dig | Jump | Book |
 | Cute Fighter | Attack | Strong Attack | Catch |
-| Baryon | Shot | Bomb | Bomb |
+| Baryon | Shot | Bomb | - |
 | Gaia | Shot | Bomb | - |
 | Rolling Crush | Launch | - | - |
 

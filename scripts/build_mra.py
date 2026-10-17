@@ -42,11 +42,13 @@ SETS = {"dreamwld": None, "cutefght": None, "baryon": None, "baryona": "baryon",
 #   cutefght  the game's how-to-play demo after a coin: "Attack", "Strong Attack", "Catch"
 #   baryon, rolcrush, gaialast: no flyer, manual or database names them; named for what each
 #   does in MAME 0.289, pressed alone in play. baryon: 1 fires, 2 and 3 both bomb (the HUD
-#   reads "BOMB"). gaialast: 1 fires, 2 bombs, 3 does nothing. rolcrush: all three launch the
-#   ball, so one button.
+#   reads "BOMB"), so one Bomb button. gaialast: 1 fires, 2 bombs, 3 does nothing. rolcrush:
+#   all three launch the ball, so one button.
+# No name twice: Main_MiSTer's Define buttons prompts by name and ignores a pad button already
+# taken in the same pass, so a second "Bomb" prompt looks like the first one refusing it.
 BUTTONS = {"dreamwld": ["Dig", "Jump", "Book"],
            "cutefght": ["Attack", "Strong Attack", "Catch"],
-           "baryon": ["Shot", "Bomb", "Bomb"],
+           "baryon": ["Shot", "Bomb"],
            "rolcrush": ["Launch"],
            "gaialast": ["Shot", "Bomb"]}
 CATEGORY = {"dreamwld": "Platform", "cutefght": "Fighter", "baryon": "Shooter",
