@@ -256,6 +256,9 @@ def build(setname, sm, out_root, write=True):
     game = BUTTONS[parent or setname]
     # six button slots, then Start, Coin, Pause at the J1 line's positions (DreamWorld.sv)
     btn_names = ",".join(game + ["-"] * (6 - len(game)) + ["Start", "Coin", "Pause"])
+    # Main_MiSTer (joymapping.cpp, map_joystick) skips the "-" names and gives the n-th default
+    # to the n-th named button, so the list has one entry per named button, in order
+    btn_default = ",".join(["A", "B", "X", "Y", "L"][:len(game)] + ["Start", "Select", "R"])
     sw, sw_def = switches(info["ports"], setname)
     q = {chr(34): "&quot;"}
     xml = [
@@ -273,7 +276,7 @@ def build(setname, sm, out_root, write=True):
         f"    <rotation>{ROTATION[info['rot']]}</rotation>",
         "    <players>2</players>",
         "    <joystick>8-way</joystick>",
-        f'    <buttons names="{escape(btn_names, q)}" default="A,B,X,Start,Select,R" count="{len(game)}"/>',
+        f'    <buttons names="{escape(btn_names, q)}" default="{btn_default}" count="{len(game)}"/>',
         "",
         "    <!-- mod byte (DreamWorld.sv): [0] the second OKI (dreamwld_map), [2:1] orientation -->",
         f'    <rom index="1"><part>{mod:02X}</part></rom>',

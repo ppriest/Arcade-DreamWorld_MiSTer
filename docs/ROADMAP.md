@@ -454,7 +454,9 @@ and ball chain in rolcrush. Why is not known: the demo's state diverges from MAM
 Staged on `develop`: `releases/Arcade-DreamWorld_20261017.rbf` (the `27e1ee0` build, the bitstream
 tested above) and the seven `.mra` files in `releases/` and `releases/_alternatives/`, unchanged from
 the tested `_dev` set, `validate_mra.py` clean. The demo difference is a known issue in the README.
-Squash onto `master`, push and the Downloader database wait for the user.
+Published at the user's request: squashed onto `master` as `7ebf3db` and pushed, the repository
+made public, and the Downloader database's `cores.md` lists `Arcade-DreamWorld_20261017.rbf` with
+7 MRAs.
 
 **Phase 6 — Savestates, state dumps and cheats.** Optional. The inherited RTL was not written for
 state capture; `docs/STATE.md` starts in Phase 1 for every RAM added.

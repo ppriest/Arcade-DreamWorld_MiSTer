@@ -59,7 +59,8 @@ Steps for a release:
 
 **Current state:** `Arcade-DreamWorld_20261017.rbf` from `27e1ee0`, seed default, every clock met
 (worst `clk_sys` setup +4.873 ns); all seven sets boot, coin, start and pause on it
-(`docs/ROADMAP.md`, Phase 5). Staged on `develop`, not yet on `master` or pushed.
+(`docs/ROADMAP.md`, Phase 5). On `master` as `7ebf3db`, pushed; the Downloader database lists it
+with 7 MRAs.
 
 ## Submitting the core upstream
 

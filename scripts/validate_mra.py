@@ -36,6 +36,11 @@ Checks:
   7. <buttons names> are the game's own control names, from the manual or
      another source, not "Button 1". Start, Coin, Pause, Service, Test and "-"
      are exempt. --allow-generic-buttons lets early bring-up through.
+  8. <buttons default> has one entry per <buttons names> entry that is not "-",
+     and Start and Coin get the pad's Start and Select. Main_MiSTer
+     (joymapping.cpp, map_joystick) skips the "-" names and gives the n-th
+     default to the n-th named button, so a list written for three buttons
+     shifts Start, Coin and Pause onto other pad buttons in a one-button game.
 
 Usage:
     python scripts/validate_mra.py releases/*.mra
@@ -181,6 +186,20 @@ def check(path, rotations, allow_generic_buttons=False, installed=None):
                 'DIP %r with setting %r needs %d columns, the OSD has %d: the value '
                 'wraps off screen. Abbreviate the name or the settings in the '
                 'generator' % (name, widest, cols, OSD_COLS))
+
+    b = root.find('buttons')
+    if b is not None and b.get('default'):
+        named = [n.strip() for n in (b.get('names') or '').split(',') if n.strip() and n.strip() != '-']
+        defs = [d.strip() for d in b.get('default').split(',')]
+        pairs = ', '.join('%s=%s' % p for p in zip(named, defs))
+        if len(defs) != len(named):
+            problems.append(
+                '<buttons default> has %d entries for %d named buttons; Main_MiSTer pairs them '
+                'in order, skipping "-": %s' % (len(defs), len(named), pairs))
+        want = {'start': 'start', 'coin': 'select'}
+        for n, d in zip(named, defs):
+            if n.lower() in want and d.lower() != want[n.lower()]:
+                problems.append('<buttons default> puts %s on the pad\'s %s (pairs: %s)' % (n, d, pairs))
 
     if not allow_generic_buttons:
         gen = generic_buttons(root)
