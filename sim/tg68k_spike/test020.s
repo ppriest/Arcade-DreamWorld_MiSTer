@@ -1,3 +1,4 @@
+; SPDX-License-Identifier: GPL-3.0-or-later
 ; Phase 0 spike: exercise actual 68020-only additions over base 68000.
 ; Assembled with vasm (vasmm68k_mot -m68020 -Fbin), not hand-encoded --
 ; see PROVENANCE.md for why hand-encoding opcodes was abandoned after two

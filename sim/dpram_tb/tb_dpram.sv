@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // Unit test for rtl/memory/dpram.sv: port A write/read (byte-lane writes,
 // registered read-before-write semantics matching the RAM models

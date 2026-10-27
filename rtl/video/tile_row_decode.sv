@@ -1,26 +1,15 @@
-// Decodes one 16-pixel row of a 16x16x4bpp "packed_msb" tile (MAME's
-// gfx_16x16x4_packed_msb layout, used for both the "sprites" and "tiles"
-// gfx regions -- gfx_psikyo in psikyo.cpp) into 16 4-bit pixel/palette-nibble
-// values.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Decodes one 16-pixel row of a 16x16x4bpp packed-MSB tile (MAME's gfx_16x16x4_packed_msb, the
+// format of both the sprite and tilemap gfx regions here) into 16 4-bit palette indices.
 //
-// Format, verified against MAME's actual decode algorithm
-// (src/emu/drawgfx.cpp: gfx_element::decode()/readbit()), NOT just the
-// gfx_layout struct's field values at face value -- a first pass at reading
-// the struct alone (planeoffset={0,1,2,3}) suggested the nibble might need
-// bit-reversing, which turned out to be wrong once the actual plane->pixel
-// bit assignment (planebit starts at 1<<(planes-1) for plane 0, i.e. plane 0
-// is the pixel's MSB, not LSB) and readbit()'s MSB-first bit addressing were
-// worked through together:
+// Format, from MAME's decode algorithm (src/emu/drawgfx.cpp: gfx_element::decode()/readbit()),
+// not from the gfx_layout struct alone:
 //
-//   - Row = 8 bytes, byte-major, MSB-first: byte0 holds pixels 0-1, byte1
-//     holds pixels 2-3, ..., byte7 holds pixels 14-15.
-//   - Each byte's HIGH nibble is the even (left) pixel, LOW nibble is the
-//     odd (right) pixel ("x order: hi nibble first" per generic.cpp).
-//   - Within a nibble, the 4 bits map DIRECTLY to the pixel's palette index
-//     (bit3..bit0 of the nibble = bit3..bit0 of the pixel value) -- no
-//     reversal needed.
+//   - 8 bytes, byte-major, MSB-first: byte0 holds pixels 0-1, byte7 pixels 14-15.
+//   - Each byte's HIGH nibble is the even (left) pixel, the LOW nibble the odd (right) one.
+//   - The 4 bits map directly to the pixel's palette index -- no bit reversal.
 //
-// flip_x mirrors the whole 16-pixel row (sprite/tile horizontal flip).
+// flip_x mirrors the whole 16-pixel row.
 
 module tile_row_decode (
 	input  logic [7:0] row_bytes [0:7],  // row_bytes[0] = leftmost byte (pixels 0,1)

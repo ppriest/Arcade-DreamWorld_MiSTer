@@ -1,40 +1,19 @@
-// Routes Port 2's six logical consumers (per docs/phase1_sdram_map.md's
-// "Arbiter architecture" table: sprite gfxrom, sprite spritelut, maincpu
-// program fetch, audiocpu program fetch, HPS ioctl_download) onto one
-// physical sdram_phy port.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Routes Port 2's consumers onto one sdram_phy port: the two OKI sample caches, the spritelut, the
+// main CPU's program fetch, and the HPS ROM download's write path. Client 3 has no user here.
 //
-// Design reused byte-for-byte from rtl/memory/ddram_arbiter.sv, not
-// reinvented: same hold-until-ack round-robin among the four read
-// consumers, same "download always wins immediately" absolute-priority
-// write path (only active during ROM loading, before gameplay starts, so
-// it can't cost anything at runtime -- see ddram_arbiter.sv's own header
-// for the reasoning). The only real difference is the physical port shape:
-// sdram_phy's client interface is a 25-bit byte address into the 32MB SDR
-// SDRAM chip (docs/phase1_sdram_map.md), not ddram_phy's 28-bit DDRAM
-// window -- everything else about the req/we/addr/wdata/busy/valid/rdata
-// contract lines up exactly, which is what made reusing the design directly
-// possible instead of redesigning from scratch.
+// Hold-until-ack round robin among the read clients -- the served one rotates to the back, so
+// sustained pressure from one cannot starve another -- with the download taking absolute priority:
+// it runs only while a ROM loads, before gameplay, so it costs nothing at runtime.
 //
-// Read consumers all speak the same 64-bit-granule contract sdram_phy's
-// read side provides (8-byte-aligned address in, full burst-4 granule out)
-// -- callers narrower than 64 bits (spritelut's 16-bit words, maincpu's
-// 16-bit fetch, audiocpu's 8-bit fetch) sit behind rtl/memory/
-// sdram_narrow_bridge.sv, which is NOT part of this module: this arbiter
-// only knows about 64-bit granules, matching sdram_phy/sdram.sv exactly, so
-// it stays a pure transport-layer module with no per-consumer width
-// knowledge (same "no notion of regions" posture ddram_arbiter documents
-// for addresses).
+// The arbiter knows only 64-bit granules (8-byte-aligned address in, burst-4 granule out), matching
+// sdram_phy and sdram.sv. Narrower clients sit behind rtl/memory/sdram_narrow_bridge.sv, outside
+// this module, so it stays transport with no per-consumer width or region knowledge.
 //
-// c0: sprite gfxrom (already 64-bit-granule-native, connects directly, no
-//     bridge needed -- see rtl/video/sprite_render_engine.sv's
-//     gfx-ROM-row-address comment: always ends in 3'b000, i.e. always
-//     8-byte-aligned).
-// c1: sprite spritelut (via sdram_narrow_bridge, WORD_BYTES=2)
-// c2: maincpu program fetch (via sdram_narrow_bridge, WORD_BYTES=2 --
-//     68020, no real wrapper RTL exists yet, see docs/phase1_sdram_map.md)
-// c3: audiocpu program fetch (via sdram_narrow_bridge, WORD_BYTES=1 --
-//     Z80, blocked on the sound-CPU req/valid conversion bug, see
-//     docs/ROADMAP.md -- this arbiter doesn't care, it only sees req/valid)
+// c0, c4: the two OKIs' sample streams, served ahead of the round robin (see below)
+// c1:     spritelut (via sdram_narrow_bridge, WORD_BYTES=2)
+// c2:     maincpu program fetch (via sdram_narrow_bridge, WORD_BYTES=2)
+// c3:     no client in this core
 
 module sdram_arbiter6 (
 	input  logic clk,
@@ -50,13 +29,13 @@ module sdram_arbiter6 (
 	input  logic         phy_valid,
 	input  logic [63:0] phy_rdata,
 
-	// consumer 0: sprite gfxrom
+	// consumer 0: OKI 1 sample stream (sample_cache)
 	input  logic         c0_req,
 	input  logic [24:0] c0_addr,
 	output logic         c0_valid,
 	output logic [63:0] c0_data,
 
-	// consumer 1: sprite spritelut
+	// consumer 1: spritelut
 	input  logic         c1_req,
 	input  logic [24:0] c1_addr,
 	output logic         c1_valid,
@@ -68,15 +47,14 @@ module sdram_arbiter6 (
 	output logic         c2_valid,
 	output logic [63:0] c2_data,
 
-	// consumer 3: audiocpu program fetch
+	// consumer 3: no client in this core
 	input  logic         c3_req,
 	input  logic [24:0] c3_addr,
 	output logic         c3_valid,
 	output logic [63:0] c3_data,
 
-	// consumer 4: YM2610 ADPCM-A samples. Very low bandwidth -- 6 channels at
-	// ~18.5 kHz is about one byte every 1.5 us aggregate, roughly 130 clk at
-	// 85.909 MHz -- so it costs the round robin almost nothing.
+	// consumer 4: OKI 2 sample stream (sample_cache). Both OKI streams are
+	// served ahead of the round robin -- see below.
 	input  logic         c4_req,
 	input  logic [24:0] c4_addr,
 	output logic         c4_valid,
@@ -109,23 +87,19 @@ module sdram_arbiter6 (
 	logic [2:0] sel;
 	logic         sel_is_dl;
 
-	// The two ADPCM streams (c0 = ADPCM-B, c4 = ADPCM-A) are promoted above the
-	// round-robin. They are the only latency-critical clients on this port: the
-	// YM2610 consumes a sample byte on a fixed cadence and a late byte is
-	// audible at once, whereas spritelut and the CPU fetches have slack. Their
-	// bandwidth is negligible -- a byte per stream every few hundred cycles
-	// against sprite and tilemap traffic measured in granules per scanline --
-	// so promoting them costs the others nothing they can notice.
+	// The two OKI sample streams (c0, c4) are promoted above the round robin. They are the only
+	// latency-critical clients on this port: jt6295 consumes a sample byte on a fixed cadence while
+	// a voice plays, and a late byte is audible at once; sample_cache prefetches the next granule,
+	// but a miss still shows. Spritelut and the CPU fetches have slack, and the streams' bandwidth
+	// is negligible against the sprite and tilemap traffic, so promoting them costs the others
+	// nothing.
 	//
-	// This matters because the physical arbitration in sdram/sdram.sv is FIXED
-	// priority, not fair: port 0 (both tilemaps) preempts port 1 (sprite
-	// gfxrom), which preempts port 2 -- this arbiter. So on a busy screen the
-	// sound samples were already last in line physically, and then queued
-	// behind three more clients here. Reported as sound going scratchy in
-	// Gunbird when the screen is busy.
+	// It matters because sdram.sv arbitrates its physical ports by FIXED priority, not fairly: port 0
+	// (both tilemaps) preempts port 1 (sprite gfxrom), which preempts port 2 -- this arbiter. On a
+	// busy screen the sample streams are already last in line physically and would then queue behind
+	// the other clients here.
 	//
-	// adpcm_tog alternates between the two so neither can starve the other
-	// when both are streaming.
+	// adpcm_tog alternates between the two so neither can starve the other when both are streaming.
 	logic [2:0] next_sel;
 	logic         found;
 	logic         adpcm_tog;
@@ -142,19 +116,10 @@ module sdram_arbiter6 (
 			next_sel = 3'd4;
 			found    = 1'b1;
 		end else for (int i = 0; i < 5; i++) begin
-			logic [3:0] sum;   // 4 bits: rr_ptr(<=4) + i(<=4) = up to 8 --
-								// the previous 3-bit sum wrapped 4+4 to 0
-								// BEFORE the >=5 check, so with rr_ptr==4
-								// the scan set was {4,0,1,2,0}: client 3
-								// was NEVER scanned. rr_ptr becomes 4
-								// exactly after serving client 3, so a
-								// solo c3 requester (the audiocpu with no
-								// other traffic -- reproduced by
-								// tb_sound_irq_sdram.sv hanging on its
-								// second ROM granule fetch) deadlocked;
-								// with other clients active it "only"
-								// starved c3 until someone else's request
-								// advanced the pointer.
+			logic [3:0] sum;   // 4 bits: rr_ptr(<=4) + i(<=4). The earlier 3-bit sum wrapped 4+4 to
+								// 0 before the >=5 check, so with rr_ptr==4 the scan set was
+								// {4,0,1,2,0} and client 3 was never scanned -- a deadlock for a
+								// solo c3 requester, starvation otherwise.
 			sum = {1'b0, rr_ptr} + i[3:0];
 			if (sum >= 4'd5) sum = sum - 4'd5;
 			if (!found && c_req[sum[2:0]]) begin

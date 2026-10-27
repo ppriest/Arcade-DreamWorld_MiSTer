@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Exhaustive check of tilemap_addrgen against the verified row-major formula
 // (index = col + row*width, wrapped to each mode's grid) for every (mode,
 // col, row) combination -- mirrors the Python brute-force check used to
-// derive the formula in the first place (see docs/phase1_video_engine.md).
+// derive the formula in the first place.
 
 module tb_tilemap_addrgen;
 

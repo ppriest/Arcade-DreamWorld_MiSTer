@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Integration test for maincpu.sv: real TG68K.C running an assembled 68020
 // program (sim/maincpu_tb/test_maincpu.s, via vasm) against a 5-cycle
 // req/valid ROM model and synchronous RAM models for every BRAM region.
@@ -60,8 +61,7 @@ module tb_maincpu;
 	assign pause = 1'b0;
 	maincpu dut (.*);
 
-	// ---- ROM model: real req/valid, fixed 5-cycle round trip (matches
-	// sound_cpu_sngkace_tb's model exactly) ----
+	// ---- ROM model: real req/valid, fixed 5-cycle round trip ----
 	logic [15:0] rom [0:524287];
 	localparam int ROM_LATENCY = 5;
 	logic         rom_busy;
@@ -113,7 +113,7 @@ module tb_maincpu;
 			end
 			// Contract check. This was briefly "corrected" on 2026-08-23 to
 			// require a HELD req, on the strength of a hold-until-acknowledged
-			// comment in sdram_arbiter5.sv. That was wrong and the original
+			// comment in sdram_arbiter6.sv. That was wrong and the original
 			// check was right: rtl/memory/sdram_narrow_bridge.sv latches the
 			// request in B_IDLE and returns there on g_valid, so a req still
 			// asserted at that point immediately triggers ANOTHER granule

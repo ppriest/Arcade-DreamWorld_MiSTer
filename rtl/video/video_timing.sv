@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Raw video timing. H total 444 and V total 263 at 6.75 MHz, the pair chosen in
 // docs/HACKS.md (57.805 Hz, MAME's 57.793 Hz +207 ppm; 15.203 kHz). 308 x 224 visible, as
 // dreamwld.cpp's set_visarea.

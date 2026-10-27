@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """MAME's OKI writes and audio for a run, and the transcribed model's mix of them.
 
     python scripts/oki_trace.py dreamwld --seconds 20                 # attract

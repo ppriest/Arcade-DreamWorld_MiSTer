@@ -1,22 +1,15 @@
-// The complete SDRAM backend: one real SDRAM chip
-// (rtl/memory/sdram/sdram.sv), its 3 physical ports wrapped in req/valid
-// (rtl/memory/sdram_phy.sv), Port 0 shared by both tilemap layers, Port 1
-// dedicated to sprite gfxrom, and Port 2 fanned out to the spritelut, the
-// main CPU and the ROM download (rtl/memory/sdram_arbiter6.sv) with narrow
-// clients bridged through rtl/memory/sdram_narrow_bridge.sv, gfx-ROM-row
-// consumers corrected for byte order (rtl/memory/gfxrom_byte_reorder.sv),
-// and HPS ROM download bridged in (rtl/memory/sdram_download.sv).
+// SPDX-License-Identifier: GPL-3.0-or-later
+// The SDRAM backend: one real SDRAM chip (rtl/memory/sdram/sdram.sv), its three physical ports
+// wrapped in req/valid (rtl/memory/sdram_phy.sv). Port 0 carries both tilemap layers through
+// sdram_arbiter2, Port 1 is the sprite engine's alone, and Port 2 fans out through sdram_arbiter6
+// to the two OKI sample caches, the spritelut, the main CPU's program fetch and the ROM download,
+// the narrow clients bridged by sdram_narrow_bridge.sv and the gfx-row readers by
+// gfxrom_byte_reorder.sv.
 //
-// Client-facing ports match rtl/dreamworld_core.sv's external ROM port shapes
-// directly (l0_gfxrom_*/l1_gfxrom_*/sp_gfxrom_*/sp_lut_*/cpu_rom_*).
-//
-// Client engines address each region with their OWN local convention
-// (tilemap/sprite gfxrom_addr are already byte offsets from tile-row/
-// sprite-row arithmetic; spritelut/maincpu addresses are WORD addresses,
-// matching each engine's own port comment) -- this module is what adds
-// each region's fixed base offset (docs/phase1_sdram_map.md's "Address
-// map" table) and does the word->byte conversion where needed, so no
-// client engine needs to know its own placement in the flat SDRAM map.
+// Client ports match rtl/dreamworld_core.sv's shapes. Each engine addresses its region in its own
+// convention -- byte offsets from the tile and sprite row arithmetic, word addresses for the
+// spritelut and the main CPU -- and this module adds the region's base and the word-to-byte
+// conversion, so no client needs to know where it sits in the flat map.
 module dreamworld_sdram_top (
 	input  logic clk,
 	input  logic reset,
@@ -54,8 +47,8 @@ module dreamworld_sdram_top (
 	input  logic         ldr_we16,
 	output logic         ldr_busy,
 
-	// Tilemap layer 0/1 gfxrom -- dedicated ports (docs/phase1_sdram_map.md
-	// Port 0/Port 1), matches rtl/dreamworld_core.sv's l0_gfxrom_*/l1_gfxrom_*.
+	// Tilemap layers 0/1 gfxrom -- Port 0, through sdram_arbiter2. Matches
+	// rtl/dreamworld_core.sv's l0_gfxrom_*/l1_gfxrom_*.
 	input  logic         l0_gfxrom_req,
 	input  logic [21:0] l0_gfxrom_addr,
 	output logic         l0_gfxrom_valid,
@@ -66,12 +59,13 @@ module dreamworld_sdram_top (
 	output logic         l1_gfxrom_valid,
 	output logic [63:0] l1_gfxrom_data,
 
-	// Sprite gfxrom + spritelut -- Port 2, arbiter clients c0/c1.
+	// Sprite gfxrom -- Port 1, a port of its own.
 	input  logic         sp_gfxrom_req,
 	input  logic [22:0] sp_gfxrom_addr,
 	output logic         sp_gfxrom_valid,
 	output logic [63:0] sp_gfxrom_data,
 
+	// spritelut -- Port 2, arbiter client c1.
 	input  logic         sp_lut_req,
 	input  logic [16:0] sp_lut_addr,
 	output logic         sp_lut_valid,
@@ -135,12 +129,10 @@ module dreamworld_sdram_top (
 	);
 
 	// ---- Port 0: BOTH tilemap layers, via sdram_arbiter2 ----
-	// The tilemap layers have enormous slack (21 fetches x ~30 clk worst
-	// per 5472-clk line, ~12% duty even stalled -- PREFETCH_DEPTH=32
-	// absorbs the arbitration jitter, see tilemap_line_engine.sv), so they
-	// share Port 0 through one arbiter2, keeping Port 1 as the sprite
-	// engine's DEDICATED port -- the sprite pass is the bandwidth-critical
-	// consumer (it can approach a whole frame time under load).
+	// The tilemap layers have the slack (21 fetches in a 3552-clk line is well under half the
+	// line even with SDRAM stalls; PREFETCH_DEPTH=32 absorbs the arbitration jitter,
+	// tilemap_line_engine.sv), so they share Port 0 and leave Port 1 to the sprite engine, the
+	// bandwidth-critical consumer -- its pass can approach a whole frame time under load.
 	logic         p0arb_req, p0arb_busy, p0arb_valid;
 	logic [24:0] p0arb_addr;
 	logic [63:0] p0arb_rdata;
@@ -173,21 +165,13 @@ module dreamworld_sdram_top (
 
 	// ---- Port 1: sprite gfxrom, DEDICATED (see the Port 0 comment) ----
 	//
-	// The pulse shim below is REQUIRED, not decorative. sp_gfxrom_req
-	// (sprite_line_engine.sv) is a held-until-valid signal: its registered
-	// clear is scheduled the same cycle it samples gfxrom_valid, so req is
-	// still high one cycle after valid -- the convention for every
-	// gfxrom_req/lut_req consumer here. But
-	// sdram_phy's contract is an explicit PULSE, and its `valid` lands on
-	// the same cycle it returns to S_IDLE, where it immediately re-samples
-	// `req`. The arbiters (sdram_arbiter2/6) mask this by asserting c_valid
-	// one cycle before their own state returns to idle, giving the
-	// consumer's req-clear a head start; a single client wired straight
-	// into sdram_phy has no such grace and latches a spurious second
-	// transaction on the cycle valid pulses (seen on hardware as corrupted
-	// sprites and a worse sp_render_max). The shim reproduces the arbiters'
-	// "valid one cycle before idle" timing, keeping the invariant that
-	// every sdram_phy port has something pulse-shaping its req.
+	// The pulse shim below is required, not decorative. sp_gfxrom_req is held until valid and its
+	// clear is scheduled the same cycle it samples gfxrom_valid, so req is still high one cycle
+	// after valid; sdram_phy wants a pulse, and its valid lands on the cycle it returns to idle and
+	// re-samples req. A single client wired straight in therefore latches a spurious second
+	// transaction -- corrupted sprites and a worse sp_render_max on hardware. The arbiters mask
+	// this by asserting c_valid one cycle before their state returns to idle; the shim reproduces
+	// that timing, so every sdram_phy port has something pulse-shaping its req.
 	logic         sp_valid_raw;
 	logic [63:0] sp_rdata_raw;
 	logic         sp_phy_req, sp_phy_busy;
@@ -221,7 +205,7 @@ module dreamworld_sdram_top (
 	assign sp_gfxrom_valid = sp_valid_raw;
 	gfxrom_byte_reorder u_sp_reorder2 (.sdram_granule(sp_rdata_raw), .gfxrom_data(sp_gfxrom_data));
 
-	// ---- Port 2: arbiter (spritelut, maincpu, download) ----
+	// ---- Port 2: arbiter (the two OKIs, spritelut, maincpu, download) ----
 	logic         p2phy_req, p2phy_we, p2phy_busy, p2phy_valid;
 	logic [24:0] p2phy_addr;
 	logic [15:0] p2phy_wdata;
@@ -323,14 +307,9 @@ module dreamworld_sdram_top (
 
 	// c2: maincpu program fetch -- 16-bit word client, cpu_rom_addr is a WORD address.
 	//
-	// Byte swap at the maincpu-specific seam: sdram_narrow_bridge.sv packs
-	// 16-bit words little-endian (its own header: "EVEN byte address...
-	// LOW byte, ODD... HIGH byte") -- correct for spritelut
-	// (`ROM_REGION16_LE`, docs/phase1_video_engine.md's "LUT ROM format"),
-	// but the 68020 program ROM is plain `ROM_REGION` (big-endian, see
-	// sim/maincpu_tb/gen_rom_hex.py's own big-endian packing). The swap
-	// lives HERE rather than in sdram_narrow_bridge.sv, which is correct
-	// as-is for spritelut's genuinely little-endian content.
+	// The 68020 program ROM is plain ROM_REGION, big-endian (sim/maincpu_tb/gen_rom_hex.py
+	// packs it that way); sdram_narrow_bridge.sv packs little-endian, which is right for the
+	// spritelut's genuinely little-endian ROM_REGION16_LE content. The swap belongs at this seam.
 	logic [15:0] cpu_rom_data_le;
 	assign cpu_rom_data = {cpu_rom_data_le[7:0], cpu_rom_data_le[15:8]};
 

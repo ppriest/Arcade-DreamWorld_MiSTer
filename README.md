@@ -19,7 +19,6 @@ Quartus Prime 17.0.2 Lite for the DE10-nano.
 - [Installation](#installation)
 - [Controls](#controls)
 - [Status](#status)
-  - [Features](#features)
   - [Todo](#todo)
   - [Resource usage](#resource-usage)
 - [AI Attestation](#ai-attestation)
@@ -150,32 +149,7 @@ Known issues:
 right. `docs/HACKS.md` lists this core's own approximations. `docs/ROADMAP.md` is the plan and its
 progress; `docs/LESSONS_LEARNED.md` is what it cost.
 
-### Features
-
-* DIP switches from the `.mra` (`DIP;` in the OSD): done
-* Inputs: done, pads and MAME's keyboard keys
-* CRT Adjust (H-Position, V-Shift, H-Size, V-Size): present, not yet checked at 308 columns
-* HDMI scaling (integer scale, crop, crop offset): present (`video_freak`), not yet checked on a display
-* HDMI rotation (orientation): done, Auto from the set (Baryon); checked from the rotated frame buffer
-* Flip screen, HDMI and analog, from the OSD or the DIP (fake DIP, the board has none): done; the OSD option and the DIP together flip twice
-* HDMI-only options hidden under direct video: done
-* Peripheral menus shown only for games that use them: n/a
-* Rotary joysticks (Ikari Warriors controls, GRS keystroke mode), where used: n/a
-* Light guns: mouse, analog stick and synthetic crosshair, where used: n/a
-* Audio mix (Mono, None, 25%, 50%): done
-* Hiscore saving (`hiscore.v`, with autosave): Baryon (both sets) and Rolling Crush 1.07, from MAME's hiscore.dat; not yet exercised with a new score
-* NVRAM / EEPROM saved to the `.nvm` file: n/a
-* Fast ROM loading via DDR: done
-* Pause (with CPU suspended): done
-* Sound: done, both OKI M6295 with their bank registers
-* Savestates (optional): not yet
-* Cheats (optional): not yet
-
 ### Todo
-
-- [ ] Check CRT Adjust, Scale and Crop on a display
-- [ ] Exercise hiscore save and restore
-- [ ] Find why Baryon's and Rolling Crush's attract demos differ from MAME's
 
 ### Resource usage
 

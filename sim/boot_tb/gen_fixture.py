@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Fixtures for sim/boot_tb: a set's program ROM and MCU ROM from its .mra image.
 
     python sim/boot_tb/gen_fixture.py [set]     # from the repository root, default dreamwld

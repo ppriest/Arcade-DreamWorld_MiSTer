@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Write a set's status word (.CFG) on the MiSTer, for the debug page's switches.
 
     python scripts/write_cfg.py dreamwld --set 56            # trace overlay on

@@ -1,23 +1,20 @@
-// Per-destination-column source pixel index for the nearest-neighbor
-// zoom-blit accumulator (gfx_element::drawgfxzoom_core, drawgfxt.ipp:738-805),
-// collapsed to a closed form -- see docs/phase1_video_engine.md, "The actual
-// per-tile scaling algorithm":
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Per-destination-column source pixel index for the nearest-neighbour zoom blit
+// (gfx_element::drawgfxzoom_core, drawgfxt.ipp:738-805), as a closed form:
 //
-//   no flip: accum before column `col` (0-indexed) = col * dx
-//   flip:    accum before column `col`              = (dst_size-1-col) * dx
+//   no flip: accum before column col = col * dx
+//   flip:    accum before column col = (dst_size-1-col) * dx
 //   src_index = accum >> 16
 //
-// dx is constant across one sub-tile row/column (it only depends on the
-// sprite's raw zoom value, via sprite_zoom_lut), so the running accumulator
-// the C++ actually uses is just an arithmetic progression -- no per-cycle
-// state needed here, this is pure combinational per-column math. `col` is
-// expected to be driven 0..dst_size-1 by the caller (a sequential blit
-// walker, not yet built); behavior for col >= dst_size is a don't-care.
+// dx is constant across a sub-tile row/column, so the C++'s running accumulator is an arithmetic
+// progression and this is pure combinational per-column math. col is driven 0..dst_size-1; col >=
+// dst_size is a don't-care.
 //
-// Verified in Python that src_index always lands in 0-15 across the full
-// valid domain (all 16 raw zoom values, both flip directions, every valid
-// col for that raw's dst_size) despite col*dx needing ~21 bits before the
-// >>16 -- it never indexes outside the source tile's 16 pixels.
+// col*dx needs ~21 bits before the >>16, but src_index stays in 0-15 across every raw zoom value,
+// both flip directions and every valid col (checked exhaustively in Python), so it never leaves
+// the source tile.
+//
+// This board has no zoom: dst_size is 16 and dx is 1.0, so src_index is col (15-col when flipped).
 
 module sprite_zoom_src_index (
 	input  logic [3:0]  col,        // 0..dst_size-1 (caller-guaranteed)

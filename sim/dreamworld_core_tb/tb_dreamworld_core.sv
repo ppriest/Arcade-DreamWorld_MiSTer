@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // Real functional test for rtl/dreamworld_core.sv: a genuine CPU program
 // (test_video.s, assembled with vasm -- sim/dreamworld_core_tb/test_video.hex)

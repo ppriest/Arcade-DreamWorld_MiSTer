@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Unit test for sdram_narrow_bridge: real sdram_phy + sdram + chip model
 // underneath (same "real transport, not a stub" posture as every other
 // sdram_*_tb in this project), checking the word/byte extraction logic the
@@ -133,9 +134,8 @@ module tb_sdram_narrow_bridge;
 	// NOTE: bridge_byte and bridge_word each get their OWN sdram_phy
 	// instance (port1/port2 of the shared controller) so they can be
 	// exercised independently without needing an arbiter in this unit test
-	// -- sdram_arbiter5 (tested separately in sim/sdram_arbiter5_tb/) is
-	// what would normally sit in front of a bridge in the real Port 2
-	// consumer group.
+	// -- sdram_arbiter6 is what normally sits in front of a bridge in the
+	// real Port 2 consumer group.
 
 	int errors = 0;
 

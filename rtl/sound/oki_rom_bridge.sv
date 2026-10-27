@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The OKI M6295's ROM bus, turned into one held req/valid fetch at a time.
 //
 // jt6295's ROM interface is a level: it sets rom_addr and expects rom_data

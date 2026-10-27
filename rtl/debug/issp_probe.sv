@@ -1,22 +1,19 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // In-System Sources and Probes instrumentation for the SDRAM path.
 //
-// WHY THIS RATHER THAN SIGNALTAP
-// SignalTap acquisition is not scriptable in Quartus Prime Lite 17.0 -- there
-// are no *signaltap*/*stp* Tcl commands, only the GUI. In-System Sources and
-// Probes IS scriptable (start_insystem_source_probe / read_probe_data /
-// write_source_data), which matters for a headless workflow.
+// SignalTap is not scriptable in Quartus Prime Lite 17.0 -- there are no *signaltap*/*stp* Tcl
+// commands, only the GUI. ISSP is (start_insystem_source_probe / read_probe_data /
+// write_source_data), which is what a headless workflow needs.
 //
-// It also suits the question better. The failure is "SDRAM reads return 0000
-// for every address", and what distinguishes the possible causes is not a
-// waveform but a handful of counts:
+// Counts, not a waveform, answer the useful questions:
 //
 //   writes issued == 0            -> the one-shot never fires (dl_req/ready)
 //   issued > 0, acked == 0        -> the controller never accepts writes
 //   issued == acked, reads == 0   -> reads are not being serviced
 //   reads > 0, never non-zero     -> memory is genuinely empty; download lost
 //
-// Counters saturate rather than wrap so a reading is never ambiguous about
-// whether something happened a lot or exactly 65536 times.
+// Counters saturate rather than wrap, so a reading is never ambiguous about whether something
+// happened a lot or exactly 65536 times.
 module issp_probe #(
 	parameter [7:0] INSTANCE_ID = "D"
 ) (

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // jt6295 playing one phrase from dreamwld's oki1 ROM: the shortest valid phrase in the
 // table, on channel 1 at full volume, with pin 7 low (ss = 0) and bank 0, as dreamwld.cpp

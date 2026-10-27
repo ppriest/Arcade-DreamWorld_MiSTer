@@ -1,39 +1,31 @@
-// Tilemap scanline sequencer -- one instance per layer. Drives the
-// combinational address/decode chain (tilemap_coord -> tilemap_addrgen ->
-// tile_cell_decode -> tile_row_decode) against real per-cycle timing and
-// memory latency, prefetching up to PREFETCH_DEPTH tiles ahead of display
-// through a ring buffer (was a fixed 2-entry ping-pong; widened after real
-// SDRAM contention measurement, see the buf_pixels/buf_ready declaration
-// below and docs/phase1_sdram_map.md).
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Tilemap scanline sequencer -- one instance per layer. Drives the combinational address/decode
+// chain (tilemap_coord -> tilemap_addrgen -> tile_cell_decode -> tile_row_decode) and prefetches
+// up to PREFETCH_DEPTH tiles ahead of display through a ring buffer, so a stalled SDRAM fetch does
+// not leave a gap on screen.
 //
-// See docs/phase1_video_engine.md ("Tilemap scanline sequencer") for the
-// full design rationale -- interface contract, the fetch-must-complete-
-// within-16-cycles timing requirement, and why the row-scroll table fetch
-// index is the raw scanline number, not the Y-scrolled one.
+// One tile is due every 16 pixels, i.e. every 128 clk at ce_pix = clk/8. The row-scroll table is
+// indexed by the raw scanline, not the Y-scrolled one.
 
 module tilemap_line_engine #(
 	parameter int LAYER = 0,   // 0 or 1 -- passed through to tile_cell_decode
-	// Prefetch ring buffer depth. 32 >= the 21 tiles fetched per line, so the
-	// ring cannot wrap mid-line; at 8 it wrapped 2.6 times per line, and an
+	// Ring buffer depth. 32 >= the 21 tiles fetched per line, so the ring
+	// cannot wrap mid-line; at 8 it wrapped 2.6 times per line, and an
 	// off-by-one at a wrap would shift every tile after it.
-	// See the buf_pixels/buf_ready declaration
-	// below for why this became a parameter instead of a fixed 2-entry
-	// ping-pong (real SDRAM contention measurement, docs/phase1_sdram_map.md).
 	parameter int PREFETCH_DEPTH = 32
 ) (
 	input  logic        clk,
 	input  logic         reset,
 
-	// Timing (from a not-yet-built top-level generator; see doc for the
-	// hcnt/vcnt convention this module assumes)
+	// Timing: vcnt is the active scanline.
 	input  logic [7:0]  vcnt,        // 0-223, current active scanline
-	// One pixel is consumed per ce_pix, not per clk. clk is 85.909 MHz and the
-	// pixel clock is 85.909/12 = 7.159 MHz; without this the display side
-	// drains the line's 21 prefetched tiles (336 pixels, one per clk) in
-	// 336/12 = 28 pixel clocks and reports fetch_overrun for the rest of the
-	// line. That was the observed defect: correct content in columns 0..27 of
-	// every scanline, backdrop across the remaining 292.
-	input  logic         ce_pix,      // 1-in-12 pixel-clock enable
+	// One pixel is consumed per ce_pix, not per clk. clk is 54 MHz and the
+	// pixel clock is 54/8 = 6.75 MHz; without this the display side drains
+	// the line's 21 prefetched tiles (336 pixels, one per clk) in 336/8 = 42
+	// pixel clocks and reports fetch_overrun for the rest of the line --
+	// correct content in columns 0..41 of every scanline, backdrop across
+	// the remaining 266.
+	input  logic         ce_pix,      // 1-in-8 pixel-clock enable
 	input  logic         h_active,    // 1 while the active 320-pixel window is being displayed
 	input  logic         line_start,  // 1-cycle pulse during blanking, well before h_active next asserts
 
@@ -64,24 +56,14 @@ module tilemap_line_engine #(
 
 	// gfx ROM read port: request/valid handshake, latency not assumed.
 	//
-	// gfxrom_req deasserts COMBINATIONALLY on gfxrom_valid (see the
-	// assign below) -- the registered clear alone left req visibly high
-	// for the one cycle after valid, and rtl/memory/sdram_phy.sv is back
-	// in S_IDLE sampling req that exact cycle, so it launched a DUPLICATE
-	// transaction for the address it had just served. From then on every
-	// response the engine consumed belonged to the PREVIOUS request:
-	// tile shape from cell N-1 rendered at position N with position N's
-	// own (correctly latched) colour -- the single off-by-one behind both
-	// the one-tile layer offset and the wrong-palette tiles
-	// (docs/TILEMAP_BUG.md). Latency-dependent and invisible to every
-	// short-latency behavioral testbench: the duplicate happened there
-	// too, but its response landed while the FSM was between states and
-	// was silently dropped; the real controller's longer latency landed
-	// it squarely in the next S_GFXROM_WAIT. Root-caused via
-	// sim/tilemap_addr_trace_tb/tb_tilemap_screen_sdram.sv, which
-	// reproduced the real-hardware screen pixel-for-pixel and traced the
-	// phy's transaction address diverging from the engine's request
-	// address from the second fetch of every line onward.
+	// gfxrom_req deasserts COMBINATIONALLY on gfxrom_valid (see the assign
+	// below). A registered clear leaves req high for one cycle after valid,
+	// and sdram_phy samples req on that same cycle, launching a duplicate
+	// transaction for the address it had just served; every later response
+	// then belonged to the previous request, so tile N-1's shape was drawn at
+	// position N in N's colour -- the one-tile offset and the wrong-palette
+	// tiles. Short-latency testbenches dropped the duplicate response between
+	// FSM states and never showed it.
 	output logic         gfxrom_req,
 	output logic [21:0] gfxrom_addr,   // tile_number*128 + fine_y*8
 	input  logic         gfxrom_valid,
@@ -98,10 +80,8 @@ module tilemap_line_engine #(
 	output logic         overrun_ev
 `ifdef DEBUG_ISSP
 	,
-	// Every stage of the fetch pipeline for the wrong-palette/one-tile-shift
-	// investigation, latched by the caller (not here -- see dreamworld_core.sv's
-	// issp_probe instance) at the moment the bad tile is displayed. No cost
-	// to the shipping build.
+	// Fetch-pipeline stages, latched by the caller (dreamworld_core.sv's issp_probe)
+	// when a bad tile is displayed. No cost to the shipping build.
 	output logic [11:0] dbg_fetch_vram_addr,
 	output logic [15:0] dbg_vram_data,
 	output logic [14:0] dbg_cell_tile_number,
@@ -195,26 +175,22 @@ module tilemap_line_engine #(
 	logic        rowscroll_en_latched;
 	logic        flip_latched;
 
-	// One-PIXEL alignment bias, measured on real hardware against the MAME
-	// reference (reported by the author of MAME's Psikyo renderer):
-	// screen_x shows tilemap pixel (scroll + screen_x + 1), moving the
-	// image one pixel LEFT of the unbiased sum. Applied to the shared
-	// per-line sum so rowscroll lines get the same bias; both layers
-	// inherit it (same module). The SIGN is hardware-verified -- do not
-	// flip it from re-derivation alone (docs/LESSONS_LEARNED.md,
-	// "Don't guess a sign twice").
+	// One-PIXEL alignment bias, measured on hardware against MAME: screen_x
+	// shows tilemap pixel (scroll + screen_x + 1), moving the image one pixel
+	// LEFT of the unbiased sum. Applied to the shared per-line sum so
+	// row-scroll lines get the same bias; both layers inherit it. The sign is
+	// hardware-verified -- do not flip it from re-derivation alone
+	// (docs/LESSONS_LEARNED.md, "Don't guess a sign twice").
 	//
-	// Flip Screen: screen line y shows source line 223-y (so the rowscroll
+	// Flip Screen: screen line y shows source line 223-y (so the row-scroll
 	// table is read bottom-up too) and screen column c shows source column
-	// 319-c, with the fetch walking left. The first pixel of the line reaches
-	// the screen at column 1, not 0: it is registered on the ce_pix edge that
-	// advances hcnt. Unflipped that column is scroll + 1, which is the +1
-	// above. Flipped it must be source column 318, so the line starts at
-	// tilemap pixel scroll + 318. (scroll + 320 -- 319 plus the unflipped bias
-	// -- put every tilemap two pixels right of the rotated picture;
-	// sim/flip_frame_tb measured it and sim/tilemap_flip_tb now checks by
-	// screen column.) The constant is folded in at line_start so the per-line
-	// sum below stays a single add behind the rowscroll RAM.
+	// 319-c, with the fetch walking left. The first pixel reaches the screen
+	// at column 1, not 0, because it is registered on the ce_pix edge that
+	// advances hcnt. Unflipped that column is scroll + 1, the bias above.
+	// Flipped it must be source column 318, so the line starts at tilemap
+	// pixel scroll + 318. (scroll + 320 -- 319 plus the unflipped bias --
+	// put both tilemaps two pixels right of the rotated picture;
+	// sim/tilemap_flip_tb checks it by screen column.)
 	wire [7:0]  src_line     = flip ? (8'd223 - vcnt) : vcnt;
 	wire [7:0]  rs_line      = src_line + 8'd32;
 	wire [15:0] line_x_first = base_x_first_latched + (rowscroll_en_latched ? rowscroll_data : 16'd0);
@@ -222,67 +198,42 @@ module tilemap_line_engine #(
 	logic [14:0] tile_number_reg;
 	logic [6:0]  color_reg;
 `ifdef DEBUG_ISSP
-	// Frozen at the SAME cycle as color_reg (S_CELLDEC), not read live
-	// later at S_GFXROM_WAIT -- vram_data can change between those two
-	// points if the CPU writes this exact VRAM cell while its GFX-ROM
-	// fetch is still in flight (a real, legitimate CPU write, not a bug),
-	// which would otherwise make buf_src_word disagree with buf_color for
-	// a reason that has nothing to do with the render pipeline -- a false
-	// positive in the debug tag itself, not evidence of corruption.
+	// Frozen at the same cycle as color_reg (S_CELLDEC), not read live at
+	// S_GFXROM_WAIT: the CPU can legitimately write this VRAM cell while the
+	// GFX-ROM fetch is in flight, and a later read would make buf_src_word
+	// disagree with buf_color for reasons unrelated to the pipeline.
 	logic [15:0] vram_data_reg;
 `endif
 
-	// Prefetch ring buffer, PREFETCH_DEPTH tiles deep. Was a fixed 2-entry
-	// ping-pong (fetch always exactly one tile ahead of display) until real
-	// measurement against the SDRAM transport (sim/video_pipeline_tb/
-	// tb_video_pipeline_sdram.sv, see docs/phase1_sdram_map.md's
-	// "Verification results") showed that's not enough margin: rtl/memory/
-	// sdram/sdram.sv's three ports share ONE internal transaction pipeline,
-	// so when both tilemap layers request in the same window, one of them
-	// occasionally waits out the other's full round trip (measured: nominal
-	// 15 cycles, contention-stalled 22 or 35 cycles, against this module's
-	// own 16-cycle-per-tile budget). With only one tile banked ahead, that
-	// single stall was an immediate visible miss. Depth 4 gives up to 3
-	// tile-periods (~48 cycles) of absorption instead of 1 (~16), enough to
-	// ride out an isolated stall without needing a faster clock domain or a
-	// redesigned (pipelined/overlapping) SDRAM controller -- see
-	// PROVENANCE.md-style reasoning in docs/phase1_sdram_map.md for why a
-	// faster fetch-domain clock remains the "correct" long-term fix but a
-	// separate, larger task.
+	// Prefetch ring buffer, PREFETCH_DEPTH tiles deep. It was a 2-entry
+	// ping-pong until measurement against the real SDRAM transport showed
+	// that is not enough margin: sdram.sv's three ports share one internal
+	// transaction pipeline, so when both tilemap layers request in the same
+	// window one waits out the other's full round trip (measured: 15 cycles
+	// nominal, 22 or 35 under contention). Depth 32 absorbs a line's worth of
+	// stalls; a faster fetch-domain clock would be the real fix, but it is a
+	// larger change.
 	logic [3:0] buf_pixels [0:PREFETCH_DEPTH-1][0:15];
 	logic [6:0] buf_color  [0:PREFETCH_DEPTH-1];
 `ifdef DEBUG_ISSP
-	// Tags each buffer slot with the VRAM address it was fetched from, so
-	// the DISPLAY side can report which address the pixel it is CURRENTLY
-	// showing actually came from -- a genuine same-tile correlation.
-	// Comparing the fetch side's cell_color (whatever tile is being
-	// prefetched right now, dozens of tiles ahead) against the display
-	// side's pixel_color (whatever tile is on screen right now) compares
-	// two DIFFERENT tiles and proved nothing; this fixes that.
+	// Tags each slot with the VRAM address it was fetched from, so the display
+	// side can name the address the pixel on screen actually came from. The
+	// fetch side's cell_color is dozens of tiles ahead and describes a
+	// different tile, so it cannot serve as that reference.
 	logic [11:0] buf_src_addr [0:PREFETCH_DEPTH-1];
-	// Raw VRAM word fetched into this slot. Combined with buf_color, this
-	// lets the display side self-check: does buf_color[slot] genuinely
-	// match what buf_src_word[slot]'s OWN color field predicts? If they
-	// ever disagree for the same slot, that is proof of a buffer-level
-	// corruption (a write-after-read race, wraparound bug, etc) -- not
-	// inferred from an external reference or precise timing, just internal
-	// consistency of our own storage.
+	// The raw VRAM word fetched into this slot, so the display side can check
+	// buf_color[slot] against the colour field of its own source word. Any
+	// disagreement is buffer-level corruption, proved without an external
+	// reference or timing assumption.
 	logic [15:0] buf_src_word [0:PREFETCH_DEPTH-1];
 `endif
 	logic [3:0] buf_start  [0:PREFETCH_DEPTH-1];
 	logic [4:0] buf_count  [0:PREFETCH_DEPTH-1];
 
-	// Buffer-ready handshake, race-free by construction: each toggle bit
-	// has exactly one writer (fetch_tog here, disp_tog in the display
-	// block below), and "ready to display" / "free for fetch" are derived
-	// combinationally by comparing them -- never written directly by
-	// either side. A first draft used a single buf_valid[] array written
-	// from BOTH the fetch and display always_ff blocks (set on fill,
-	// meant to be cleared on consume) -- that's a real multi-driver
-	// conflict (same class of bug as the VHDL testbench issue from the
-	// Phase 0 CPU spike), and it was ALSO simply never cleared on the
-	// display side at all, which alone would have permanently stalled
-	// the fetch engine after the first two tiles.
+	// Buffer-ready handshake, race-free by construction: each toggle bit has
+	// exactly one writer (fetch_tog here, disp_tog in the display block), and
+	// "ready to display" / "free for fetch" are derived combinationally by
+	// comparing them, never written directly by either side.
 	logic fetch_tog [0:PREFETCH_DEPTH-1];
 	logic disp_tog  [0:PREFETCH_DEPTH-1];
 	logic buf_ready [0:PREFETCH_DEPTH-1];
@@ -297,8 +248,7 @@ module tilemap_line_engine #(
 	// line drops the same cycle gfxrom_valid pulses -- the registered
 	// clear in S_GFXROM_WAIT is one cycle too late for sdram_phy.sv, which
 	// is back in S_IDLE sampling req that very cycle and would start a
-	// duplicate transaction (see the gfxrom_req port comment above and
-	// docs/TILEMAP_BUG.md for the full root-cause trail).
+	// duplicate transaction (see the gfxrom_req port comment above).
 	logic gfxrom_req_r;
 	assign gfxrom_req = gfxrom_req_r & ~gfxrom_valid;
 
@@ -308,28 +258,13 @@ module tilemap_line_engine #(
 			for (int i = 0; i < PREFETCH_DEPTH; i++) fetch_tog[i] <= 1'b0;
 			gfxrom_req_r   <= 1'b0;
 		end else if (line_start) begin
-			// A new line always takes priority over whatever the fetch FSM
-			// was still doing for the previous one -- checked here BEFORE
-			// the state case, NOT as a branch inside S_IDLE only: with a
-			// fixed 21-tile-per-line fetch budget throttled by the
-			// display's own consumption rate (S_WAIT_FREE), the fetch
-			// FSM's last tile for a line routinely finishes at or after
-			// h_active ends -- i.e. it is NOT reliably back in S_IDLE by
-			// the time the next line_start pulse arrives. Since that pulse
-			// was only ever checked from S_IDLE, it was silently dropped
-			// whenever the FSM was still mid-fetch, permanently desyncing
-			// the fetch pipeline from the display for the rest of the
-			// frame (found via sim/video_pipeline_tb/, a sustained
-			// multi-line integration test -- tilemap_line_engine's own
-			// prior single-line testbench never exercised a second
-			// line_start arriving while busy, so never caught this).
-			// Restarting unconditionally here means any in-flight
-			// S_GFXROM_WAIT request gets abandoned (gfxrom_req cleared);
-			// a late gfxrom_valid for it is harmless since no state
-			// reacts to it before the next real request. The display
-			// side already discards whatever wasn't shown on its own
-			// line_start handling below, so there is no stale data to
-			// preserve here either.
+			// A new line always takes priority over whatever the fetch FSM is still doing for the
+			// previous one. The 21-tile budget is throttled by the display's consumption rate, so
+			// the last tile routinely finishes at or after h_active ends and the next line_start
+			// arrives mid-fetch; checking only in S_IDLE silently dropped that pulse and desynced
+			// the pipeline for the rest of the frame. Restarting unconditionally abandons any
+			// in-flight request -- a late gfxrom_valid for it is harmless, as no state reacts to
+			// it before the next real request.
 			mode_latched          <= mode;
 			flip_latched          <= flip;
 			bank_latched          <= bank;
@@ -359,14 +294,12 @@ module tilemap_line_engine #(
 					// Burn one cycle: rowscroll_addr was REGISTERED on the
 					// line_start edge, so the row-scroll RAM only samples it
 					// at the end of THIS cycle and its data is not valid
-					// until the next one (the port's documented 1-cycle
-					// synchronous read; rtl/memory/dpram.sv port B).
-					// Consuming line_x_first here read whatever address was
-					// standing before -- i.e. the PREVIOUS line's entry, so
-					// every line was scrolled by its neighbour's value. Only
-					// visible where the table changes sharply line to line
-					// (tengai); a smoothly varying table hides it. Same
-					// stale-registered-read class as docs/TILEMAP_BUG.md.
+					// until the next one (the port's 1-cycle synchronous
+					// read; rtl/memory/dpram.sv port B). Consuming
+					// line_x_first here read the PREVIOUS line's entry, so
+					// every line was scrolled by its neighbour's value --
+					// visible only where the table changes sharply line to
+					// line.
 					state <= S_ROWSCROLL_WAIT2;
 				end
 
@@ -453,21 +386,13 @@ module tilemap_line_engine #(
 	end
 
 	// ---- display side: independent of the fetch FSM's state, synchronized
-	// only via buf_valid/display_sel/consumed.
+	// only via buf_ready/display_sel/consumed.
 	//
-	// pixel_valid/pixel_index/pixel_color are all registered together here,
-	// from the *current* (pre-update) display_sel/consumed/buf_valid, so
-	// they carry the same one-cycle latency from h_active and stay mutually
-	// consistent -- an earlier draft computed pixel_valid in this always_ff
-	// block but pixel_index/pixel_color combinationally from the
-	// *already-updated* display_sel/consumed in a separate always_comb,
-	// which is a real one-cycle misalignment bug, caught on review before
-	// ever compiling it.
+	// pixel_valid/pixel_index/pixel_color are registered together here from the
+	// current (pre-update) display_sel/consumed/buf_ready, so they carry the
+	// same one-cycle latency from h_active and stay mutually consistent.
 	//
-	// fetch_overrun is also driven only from here (not from the fetch FSM's
-	// reset branch as an earlier draft had it) -- a signal must have exactly
-	// one procedural driver; this is the same class of bug as the VHDL
-	// testbench multi-driver issue from the Phase 0 CPU spike.
+	// fetch_overrun is driven only from here: one procedural driver per signal.
 
 	logic [PTR_W-1:0] display_sel;
 	logic [3:0]        consumed;
@@ -525,12 +450,8 @@ module tilemap_line_engine #(
 	end
 
 `ifdef DEBUG_ISSP
-	// Direct pass-through of the internal fetch-pipeline signals, for the
-	// wrong-palette/one-tile-shift investigation (see the port declarations
-	// above). Deliberately not latched here -- the caller (dreamworld_core.sv's
-	// issp_probe instance) captures a snapshot at a chosen moment; keeping
-	// these combinational avoids adding any register this module doesn't
-	// already have.
+	// Pass-through of the internal fetch-pipeline signals for the debug tag (see
+	// the port declarations above). Not latched: the caller captures a snapshot.
 	assign dbg_fetch_vram_addr  = fetch_vram_addr;
 	assign dbg_vram_data         = vram_data;
 	assign dbg_cell_tile_number = cell_tile_number;

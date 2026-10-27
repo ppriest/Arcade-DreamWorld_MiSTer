@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Build Quartus from a staged snapshot of HEAD, leaving the tree free.
 
 A Quartus compile takes minutes, and for all of it the tree has to be left
@@ -85,13 +86,10 @@ REQUIRED_MACROS = {
 }
 
 # Files the compile expects in the project directory that the repo keeps
-# elsewhere, copied inside the stage before Quartus runs: (source, destination),
-# both relative to the repo root. fx68k's $readmemb looks for its microcode in
-# the directory Quartus runs from, not beside the RTL.
-STAGE_COPIES = (
-    # ("rtl/cpu/fx68k/microrom.mem", "microrom.mem"),
-    # ("rtl/cpu/fx68k/nanorom.mem", "nanorom.mem"),
-)
+# elsewhere are copied inside the stage before Quartus runs, as (source,
+# destination) pairs relative to the repo root. Empty: nothing here uses
+# $readmemb.
+STAGE_COPIES = ()
 # ---------------------------------------------------------------------------
 
 

@@ -1,52 +1,32 @@
-// Computes one 16x16 sub-tile's screen position and LUT-index code, from the
-// get_sprites() sub-tile loop (psikyo_v.cpp, verified against the actual
-// current source rather than re-derived by hand):
+// SPDX-License-Identifier: GPL-3.0-or-later
+// One 16x16 sub-tile's screen position and raw gfx code, from MAME's sprite sub-tile loop
+// (get_sprites, psikyo_v.cpp):
 //
-//   int xstart, xend, xinc;
-//   if (flipx) { xstart = nx-1; xend = -1; xinc = -1; } else { xstart = 0; xend = nx; xinc = +1; }
-//   int ystart, yend, yinc;
-//   if (flipy) { ystart = ny-1; yend = -1; yinc = -1; } else { ystart = 0; yend = ny; yinc = +1; }
-//   for (dy = ystart; dy != yend; dy += yinc)
-//     for (dx = xstart; dx != xend; dx += xinc) {
-//       sprite.code  = spritelut[code & (lutlen-1)];   // NOT done here, see next stage
-//       sprite.x     = x + (dx * zoomx) / 2;            // zoomx here is the TRANSFORMED (32-raw) value
-//       sprite.y     = y + (dy * zoomy) / 2;
+//   for (dy = flipy ? ny-1 .. 0 : 0 .. ny-1)
+//     for (dx = flipx ? nx-1 .. 0 : 0 .. nx-1) {
+//       sprite.code = spritelut[code & (lutlen-1)];   // next stage, not here
+//       sprite.x    = x + (dx * zoomx) / 2;           // zoomx is the transformed (32-raw) value
+//       sprite.y    = y + (dy * zoomy) / 2;
 //       code++;
 //     }
 //
-// Two things worth being explicit about since they're easy to get backwards:
+// Two things that are easy to get backwards:
 //
-// 1. `dx`/`dy` in that C++ loop are simultaneously the position-grid column/row
-//    AND the loop counter -- under flip they still range over 0..nx-1 (resp.
-//    0..ny-1), just VISITED in descending order. This module takes the caller's
-//    natural (always-ascending, flip-unaware) `ix`/`iy` grid indices and does
-//    the nx-1-ix / ny-1-iy reversal internally when flip is set, producing the
-//    same `dx`/`dy` grid value the C++ would use for `sprite.x`/`sprite.y` at
-//    that visitation step.
-// 2. `code` increments once per INNER-LOOP ITERATION, in VISITATION order --
-//    i.e. it follows the reversed order under flip, not the natural grid
-//    order. The caller is expected to drive `subtile_ordinal` as a plain
-//    monotonic 0..nx*ny-1 counter that counts iterations in the same
-//    start/inc/end sequence the C++ loop actually walks (ordinal 0 on the
-//    first iteration regardless of flip direction) -- this module just adds
-//    it to the base code, it does not independently re-derive visitation
-//    order for it.
+// 1. dx/dy are both the position-grid index and the loop counter. Under flip they still range over
+//    0..nx-1 (resp. 0..ny-1), just visited descending. The caller supplies natural, flip-unaware
+//    ix/iy; this module applies the nx-1-ix / ny-1-iy reversal itself.
+// 2. code increments per inner-loop iteration, in VISITATION order, so it follows the reversed
+//    order under flip. The caller counts `subtile_ordinal` monotonically over the same sequence;
+//    this module only adds it to the base code.
 //
-// The C++ has a `zoomx==32 && zoomy==32` fast path using `dx*16` directly;
-// that's a software-only optimization (32/2 == 16 exactly), not a distinct
-// hardware behavior, so it is deliberately not special-cased here -- `(dx *
-// zoomx) / 2` alone already produces the identical result at zoomx==32.
+// This board has no zoom, so zoomx/zoomy are 32 and the step is dx*16 / dy*16. The C++'s zoom==32
+// fast path is the same arithmetic, not a separate hardware case.
 //
-// spritelut ROM indirection (code -> real gfx tile number) is a separate
-// later pipeline stage, not handled here -- this module only produces the
-// raw `code` value the LUT will be indexed with (docs/phase1_video_engine.md,
-// "Code -> gfx ROM tile number is indirected through a ROM lookup table").
+// The spritelut indirection (code -> gfx tile number) is a later stage; this module emits the raw
+// code the LUT is indexed with.
 //
-// Output width sizing: exhaustively swept the whole realistic input domain
-// (x_pos -128..383, y_pos -256..255, nx/ny 1-8, zoom_raw 0-15, dx/dy
-// 0..nx-1/0..ny-1) in Python -- true range is X:[-128,495], Y:[-256,367],
-// both comfortably inside signed 10-bit (-512..511), so sub_x/sub_y stay
-// the same width as sprite_pos_transform's x_adj/y_adj rather than growing.
+// Widths: the swept input domain (x -128..383, y -256..255, nx/ny 1-8, zoom 0-15) gives
+// X:[-128,495], Y:[-256,367], inside signed 10-bit, so sub_x/sub_y match x_adj/y_adj's width.
 
 module sprite_subtile_step (
 	input  logic [3:0]        ix,                  // 0..nx-1, natural (flip-unaware) column index

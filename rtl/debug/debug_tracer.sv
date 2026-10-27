@@ -1,71 +1,36 @@
-// Reusable on-hardware trace buffer for bring-up, read out through the video
-// output and controlled live from the OSD.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// On-hardware trace buffer for bring-up, read out through the video output and controlled live
+// from the OSD.
 //
-// WHY THIS EXISTS
-// ---------------
-// With no JTAG available, hardware visibility on this project has come from
-// driving internal state onto VGA_R/G/B and decoding the screenshot
-// (scripts/decode_debug_screenshot.py). Doing that ad-hoc cost a ~12-minute
-// build/deploy/decode cycle every time the probe changed, and -- worse --
-// repeatedly produced CONFIDENTLY WRONG findings. Both failure modes are
-// designed out here:
+// Two invariants, both learned the hard way (docs/LESSONS_LEARNED.md, "Debug instrumentation: how
+// to not fool yourself"):
 //
-//   1. "Counters read zero" twice, because they were cleared by the very
-//      reset being investigated (MiSTer holds core RESET for the whole ROM
-//      download). THIS MODULE HAS NO RESET PORT. Registers power up to zero
-//      at configuration and are only ever re-armed deliberately. Do not add
-//      a reset to it.
-//   2. A combinational signal sampled at the wrong edge appeared to show the
-//      CPU latching corrupt data. The caller supplies an explicit one-cycle
-//      `cap_stb`, so the capture point is a deliberate decision -- and it
-//      must be proven in simulation against a known-good run before its
-//      hardware output is trusted.
+//   1. NO RESET PORT. MiSTer holds core RESET for the whole ROM download, which zeroed the very
+//      counters being investigated. Registers power up to zero at configuration and are re-armed
+//      deliberately; do not add a reset.
+//   2. Capture takes an explicit one-cycle `cap_stb`, so the sampling edge is a deliberate
+//      decision. Prove it in simulation against a known-good run before trusting its output.
 //
-// See docs/LESSONS_LEARNED.md, "Debug instrumentation: how to not fool
-// yourself".
+// Capture: pulse `cap_stb` with `cap_data` valid. Recording stops when the buffer is full and holds
+// its contents, so a screenshot can be taken at any time. `rd_index` is normally the video line
+// counter, giving DEPTH consecutive events per screenshot; `rd_data` is a real BRAM read port and
+// lags one cycle, which does not matter at line rate.
 //
-// USAGE
-// -----
-// Capture: pulse `cap_stb` for one clk cycle per event, with `cap_data` valid
-// that cycle. Recording stops when the buffer is full and holds its contents,
-// so the readout is static and a screenshot can be taken at any time.
+// Window: `ctl_window` skips ctl_window*8191 events before recording, so the window can be walked
+// across a long boot sequence from the OSD with no rebuild.
 //
-// Readout: `rd_index` is normally the video line counter, giving one captured
-// entry per scanline -- DEPTH consecutive events in a single screenshot.
-// `rd_data` is registered (a real BRAM read port), so it lags one cycle;
-// irrelevant at line rate.
-//
-// Window: `ctl_window` skips ctl_window*DEPTH events before recording, so the
-// capture window can be walked across a long boot sequence FROM THE OSD with
-// no rebuild. That is the main reason this module is worth having.
-//
-// Re-arm: any CHANGE on `ctl_rearm` (level, driven from an OSD bit) restarts
-// capture with the current window. Toggling that bit re-triggers without
-// resetting the core, so the CPU's state is not disturbed.
-//
-// The module captures from configuration onward without needing a re-arm, so
-// the power-on boot sequence is caught by default.
+// Re-arm: any change on `ctl_rearm` (an OSD bit) restarts capture with the current window, without
+// resetting the core. Recording starts at configuration, so the power-on boot is caught by default.
 
 module debug_tracer #(
-	parameter int DEPTH = 256,   // entries; also the events-per-window step
+	parameter int DEPTH = 256,   // entries
 	parameter int WIDTH = 24,    // bits per entry (24 = one RGB pixel)
 
 	// Compile-time DEFAULT for ring mode; `ctl_ring` selects it live.
-	// 0 = record the FIRST DEPTH events after arming, then hold (original).
-	// 1 = RING: keep overwriting, so the buffer always holds the MOST RECENT
-	//     DEPTH events, and freeze automatically once the event stream goes
-	//     quiet for IDLE_BITS clk cycles.
-	//
-	// Ring mode exists because "record the first N" only ever shows the boot,
-	// and walking the window forward depends on ctl_window reaching the core
-	// -- when it does not, the instrument is stuck on the first 128 events
-	// with no way to see anything later. Ring mode needs no control
-	// input at all, and answers a sharper question:
-	//   * stream stopped -> buffer freezes on the LAST events before it
-	//     stopped, i.e. exactly where the CPU died;
-	//   * stream running -> buffer keeps churning, so two screenshots differ,
-	//     which is itself proof of progress, and the addresses show how far it
-	//     has got.
+	// 0 = record the FIRST DEPTH events after arming, then hold.
+	// 1 = keep overwriting, so the buffer always holds the MOST RECENT DEPTH
+	//     events, and freeze once the event stream has been quiet for
+	//     2**IDLE_BITS clk.
 	parameter bit MODE_RING = 1'b0,
 	parameter int IDLE_BITS = 22   // ring mode: freeze after 2**IDLE_BITS idle clks
 ) (
@@ -81,13 +46,9 @@ module debug_tracer #(
 	input  logic              ctl_ring,   // 1 = ring (latest N), 0 = first N
 	input  logic              ctl_trig_en,// 1 = freeze on first cap_trig
 
-	// TRIGGER. Ring mode alone shows the most recent events, which is useless
-	// once the CPU is stuck in a tight loop -- the loop simply overwrites the
-	// interesting history. Freezing on the FIRST occurrence of a chosen event
-	// instead leaves the buffer holding the DEPTH events leading UP TO it,
-	// which is what actually identifies a cause. Point this at the thing that
-	// should never happen (here: the illegal-instruction vector fetch) and the
-	// capture becomes "the code that did it".
+	// TRIGGER. Ring mode alone shows the most recent events, which a stuck CPU's tight loop simply
+	// overwrites. Freezing on the FIRST cap_trig instead leaves the DEPTH events leading up to it,
+	// which is what identifies a cause.
 	input  logic              cap_trig,
 
 	// ---- readout ----
@@ -122,7 +83,7 @@ module debug_tracer #(
 	wire [19:0] skip_target = ({16'd0, ctl_window} << 13) - {16'd0, ctl_window};
 
 	// Ring mode: count clk cycles since the last event; saturate at the top.
-	// IDLE_BITS=22 is ~49 ms at 85.9 MHz -- comfortably longer than a frame, so
+	// IDLE_BITS=22 is ~78 ms at 54 MHz -- comfortably longer than a frame, so
 	// a legitimate lull across a vblank boundary cannot trip it, while a CPU
 	// that has genuinely stopped fetching does.
 	logic [IDLE_BITS-1:0] idle_cnt = '0;
@@ -131,10 +92,9 @@ module debug_tracer #(
 	logic trig_seen = 1'b0;
 
 	// In ring mode the buffer stops either because the stream went quiet or
-	// because the trigger fired. Note `frozen` is combinational from the
-	// REGISTERED trig_seen, so on the trigger cycle itself frozen is still 0
-	// and the triggering event IS captured -- it lands as the newest entry,
-	// with its lead-up behind it.
+	// because the trigger fired. `frozen` is combinational from the REGISTERED
+	// trig_seen, so on the trigger cycle frozen is still 0 and that event is
+	// captured as the newest entry, with its lead-up behind it.
 	assign frozen = ctl_ring ? (idle_hit | trig_seen) : full;
 
 	always_ff @(posedge clk) begin

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Converts test_maincpu.bin (vasm -Fbin output, byte-ordered/big-endian per
 # 68000 convention) into a $readmemh-compatible hex file, one 16-bit word
 # per line -- for tb_maincpu.sv to load directly into its word-addressed

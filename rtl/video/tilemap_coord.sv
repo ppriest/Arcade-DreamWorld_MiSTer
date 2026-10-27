@@ -1,15 +1,12 @@
-// Converts a raw effective pixel position (screen position + scroll,
-// already summed by the caller) into tile-grid coordinates for
-// tilemap_addrgen plus the fine (sub-tile) pixel offset, wrapping per the
-// current tilemap size mode.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Converts an effective pixel position (screen position + scroll, already summed by the caller)
+// into tile-grid coordinates for tilemap_addrgen plus the fine sub-tile offset, wrapping per the
+// current size mode.
 //
-// All four modes' pixel dimensions are powers of two (1024/2048/4096/512
-// wide, 1024/512/256/2048 tall -- see docs/phase1_video_engine.md), so
-// wraparound is just masking effective_x/y to log2(dimension) bits before
-// splitting into tile-index (>>4) and fine-offset (&0xF) -- no actual
-// modulo/divide hardware needed. Output widths match tilemap_addrgen's
-// col[7:0]/row[6:0] ports directly (unused upper bits per mode come out as
-// 0 from the masking, which is exactly what tilemap_addrgen expects).
+// Every mode's pixel dimensions are powers of two, so wraparound is a mask before splitting into
+// tile index (>>4) and fine offset (&0xF), with no modulo hardware. Only modes 0 and 1 are
+// reachable on this board (see tilemap_addrgen). Output widths match tilemap_addrgen's
+// col[7:0]/row[6:0]; the masked upper bits per mode come out 0.
 
 module tilemap_coord (
 	input  logic [1:0]  mode,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // Unit test for rtl/video/vreg_decode.sv: CPU writes into the row-scroll
 // tables and the six fixed control registers, verify both layers' row-scroll

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Boot, coin up and start each set on the MiSTer; check Pause; one contact sheet.
 
     python scripts/play_test.py                        # every set in releases/ (else releases/_dev)

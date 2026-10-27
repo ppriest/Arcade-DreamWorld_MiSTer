@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Per-frame sprite list build pass, for the per-scanline sprite renderer.
 //
 // Walking all 512 records, fetching and decoding each one, on every line would cost about 10

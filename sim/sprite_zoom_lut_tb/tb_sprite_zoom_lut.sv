@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Exhaustive check of sprite_zoom_lut against the reference table computed
-// independently with Python's exact integer arithmetic (see
-// docs/phase1_video_engine.md derivation) for all 16 raw zoom values.
+// independently with Python's exact integer arithmetic (the drawgfxt.ipp
+// derivation) for all 16 raw zoom values.
 
 module tb_sprite_zoom_lut;
 

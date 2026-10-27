@@ -1,15 +1,12 @@
-// rtl/dreamworld_core.sv (CPU + video) wired to rtl/memory/dreamworld_sdram_top.sv
-// (the ROM store). The ROM port shapes of the two modules match, so this is
-// a port-to-port connection plus the two reset domains below.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// rtl/dreamworld_core.sv (CPU + video) wired to rtl/memory/dreamworld_sdram_top.sv (the ROM store).
 //
-// Two reset domains, because MiSTer holds the core's RESET for the whole ROM
-// download (measured on hardware in the Psikyo core this was taken from):
-//   * core_reset holds the CPU and video logic during the download and the
-//     DDR3 -> SDRAM copy, when there is no complete ROM to run.
-//   * sdram_reset must be LOW during the download, or sdram_download's FSM
-//     never leaves idle and every downloaded byte is dropped without error.
-//     Upstream Sorgelig sdram.v has no reset port for this reason; this
-//     project's wrappers added one, so it is held off here.
+// Two reset domains, because MiSTer holds the core's RESET for the whole ROM download:
+//   * core_reset holds the CPU and video during the download and the DDR3 -> SDRAM copy, when there
+//     is no complete ROM to run.
+//   * sdram_reset must be LOW during the download, or sdram_download's FSM never leaves idle and
+//     every byte is dropped without error. Upstream Sorgelig sdram.v has no reset port for this
+//     reason; this project's wrappers added one, so it is held off here.
 module dreamworld_top #(
 	parameter bit DEBUG_TRACER = 1'b1
 ) (

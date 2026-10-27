@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // spriteram_dbuf: the CPU's RAM is copied, words 0-2047, into the snapshot on copy_start;
 // copy_busy covers the copy; writes after the copy do not reach the snapshot until the next.

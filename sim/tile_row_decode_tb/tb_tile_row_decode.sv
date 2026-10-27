@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Verifies tile_row_decode against a row with a known, distinct nibble
 // pattern (pixel x = value x, for x=0..15) and checks both the un-flipped
 // and horizontally-flipped outputs.

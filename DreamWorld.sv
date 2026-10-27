@@ -93,7 +93,7 @@ localparam CONF_STR = {
 	"H1P1,Debug;",
 	"H1P1-;",
 	"H1P1O[56],Trace overlay,Off,On;",
-	"H1P1O[58:57],Trace source,CPU addr+data,CPU fetch addr,SpriteRAM wr,Palette wr;",
+	"H1P1O[58:57],Trace source,CPU addr+data,CPU fetch,SpriteRAM wr,Palette wr;",
 	"H1P1O[62:59],Trace window,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15;",
 	"H1P1O[63],Re-arm capture,A,B;",
 	"H1P1-;",
@@ -137,7 +137,7 @@ wire  [7:0] ioctl_dout;
 wire         ioctl_wait;
 
 // NOTE: hps_io stays in BYTE mode (no WIDE). WIDE(1) would halve the
-// HPS-side transfers, but sys/hiscore.v parses the ioctl stream a byte at
+// HPS-side transfers, but rtl/hiscore.v parses the ioctl stream a byte at
 // a time (field positions from ioctl_addr[2:0], byte-cascaded registers)
 // and returns 8-bit upload data, so it cannot run on a 16-bit ioctl.
 // ROM loading is sped up on the SDRAM side instead -- sdram_download
@@ -216,10 +216,9 @@ wire reset = RESET | status[0] | buttons[1] | ~pll_locked;
 
 // Do NOT add ldr_active to this reset. The loader writes SDRAM THROUGH
 // dreamworld_top (ldr_req/ldr_addr/ldr_data), so it would hold
-// dreamworld_sdram_top in reset too and the copy would write nothing (tried in
-// the Psikyo core: black screen). dreamworld_top holds only the CPU and video
-// logic during the copy (its core_reset). The rotator is protected by gating
-// its DDRAM_BUSY (see below).
+// dreamworld_sdram_top in reset too and the copy would write nothing.
+// dreamworld_top holds only the CPU and video logic during the copy (its
+// core_reset). The rotator is protected by gating its DDRAM_BUSY (see below).
 
 ///////////////////////   INPUTS   ////////////////////////////////
 
@@ -293,26 +292,20 @@ wire        flip_screen = status[49] ^ dip_sw[16];
 
 // ---- debug tracer controls (rtl/debug/debug_tracer.sv) ----
 // Live from the OSD, so the capture window can be walked across a long boot
-// WITHOUT a rebuild -- that is the whole point of the module. status[55] is a
-// plain level whose CHANGE re-arms, so toggling it between A and B retriggers
-// capture without resetting the core and disturbing CPU state.
-// Bits placed in status[63:56] -- CFG byte 7 -- per docs/mister_framework_notes.md.
-// Two constraints, both learned the hard way:
-//   * The official docs state the classic O/o option syntax addresses bits
-//     0-63 ONLY (O = upper 32, o = lower 32, i.e. +32). Bits placed at 64-71
-//     were outside that window and the source select never responded.
-//   * At the time, DIPs were (wrongly) read from the status word, so bits
-//     48-55 were contested. DIPs now arrive via ioctl index 254 and consume
-//     no status bits, but these controls are left where they are.
-// status[63:56] is above the DIP range and inside the documented window, and
-// still lands in a single CFG byte so all four controls are one byte write to
-// /media/fat/config/<core>.CFG:
+// without a rebuild. status[63] is a plain level whose CHANGE re-arms, so
+// toggling it retriggers capture without resetting the core.
+//
+// status[63:56] is CFG byte 7. The O/o option syntax addresses status bits
+// 0-63 only (O = upper 32, o = lower 32), so 64-71 do not work: the source
+// select never responded there. The DIP switches arrive via ioctl index 254
+// and consume no status bits. One CFG byte keeps all four controls in a
+// single write to /media/fat/config/<core>.CFG:
 //   bit0 overlay, bits2:1 source, bits6:3 window, bit7 re-arm
 wire        dbg_overlay = status[56];
 
 // Force-disable rendering per pipeline, for isolating what is actually drawing
-// what. status[55:40] is free: the .mra's three <switches> bytes occupy
-// status[39:16] and the tracer controls sit at status[63:56].
+// what. 42:40 is free: the .mra's three <switches> bytes occupy 39:16, and the
+// only other status bits in use are 44-49, 54 and 63:56.
 //   [0] sprites  [1] tilemap layer 0  [2] tilemap layer 1
 wire [2:0] dbg_render_dis = status[42:40];
 // Freeze the 68020 so a frame can be captured and compared against a MAME dump

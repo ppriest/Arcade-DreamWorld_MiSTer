@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Verifies tilemap_line_engine over one full active scanline (308 pixels),
 // with real per-tile VRAM content (distinct color per tile, exercising
 // mode-0 wraparound since the chosen scroll value walks tile_col from 52

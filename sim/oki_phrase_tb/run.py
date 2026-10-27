@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Choose OKI phrases, run sim/oki_phrase_tb, compare with MAME's decoder (scripts/oki_model.py).
 
     python sim/oki_phrase_tb/run.py dreamwld              # prep, simulate, compare

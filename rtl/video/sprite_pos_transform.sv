@@ -1,23 +1,18 @@
-// Applies the position offset correction and zoom-factor transform that
-// get_sprites() does between decoding the raw record and iterating
-// sub-tiles (psikyo_v.cpp:235-239):
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Position offset and zoom transform between decoding a sprite record and iterating its sub-tiles,
+// from MAME's generic sprite path (get_sprites, psikyo_v.cpp:235-239):
 //
 //   x += (nx * zoomx_raw + 2) / 4          -- offset correction, uses RAW zoom
 //   y += (ny * zoomy_raw + 2) / 4
 //   zoomx = 32 - zoomx_raw                  -- THEN the raw->transformed zoom
 //   zoomy = 32 - zoomy_raw
 //
-// Note the offset correction uses the raw (0-15) zoom value, computed
-// BEFORE the 32-raw transform -- easy to accidentally swap the order since
-// both are one-line C++ statements next to each other. zoom_*_transformed
-// here is for sub-tile position stepping (sprite_subtile_step, not yet
-// written); it is NOT the same value sprite_zoom_lut consumes -- that
-// module takes the raw 0-15 value directly (see its header comment).
+// The offset correction uses the raw (0-15) zoom, before the 32-raw transform. This board has no
+// zoom -- sprite_record_decode drives zoom_*_raw to 0 -- so x_adj/y_adj are the input positions and
+// both transformed zooms are 32.
 //
-// flip_screen (the DIP-controlled screen flip, psikyo_v.cpp:241-247) is not
-// handled here: the core renders the mirrored source line and reads the line
-// buffer right to left instead (dreamworld_core.sv's flip_screen), which flips
-// sprites and tilemaps together.
+// Screen flip is not handled here: the core renders the mirrored source line and reads the line
+// buffer right to left instead (dreamworld_core.sv), flipping sprites and tilemaps together.
 
 module sprite_pos_transform (
 	input  logic signed [9:0] x_pos,

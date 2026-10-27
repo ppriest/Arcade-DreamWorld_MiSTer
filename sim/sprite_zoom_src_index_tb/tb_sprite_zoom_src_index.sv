@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Exhaustively checks sprite_zoom_src_index against an independently
 // computed reference, over every (dst_size, dx) pair sprite_zoom_lut can
 // actually produce (the 8 distinct values from its table -- upstream raw

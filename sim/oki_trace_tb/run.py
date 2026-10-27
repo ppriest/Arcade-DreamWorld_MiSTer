@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Run sim/oki_trace_tb on a window and compare it with the model's mix of the same writes.
 
     python sim/oki_trace_tb/run.py dreamwld_play             # simulate, compare

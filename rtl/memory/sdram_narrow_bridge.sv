@@ -1,48 +1,28 @@
-// Bridges a narrow (byte- or word-wide) req/valid read port onto a
-// 64-bit-granule sdram_arbiter5/sdram_phy consumer port. Exists because
-// sdram.sv's burst-4 controller only ever hands back a full 8-byte-aligned
-// granule (rtl/memory/sdram/sdram.sv, rtl/memory/sdram_arbiter5.sv) -- every
-// Port 2 consumer narrower than that (sprite spritelut's 16-bit words,
-// maincpu's 16-bit program fetch, audiocpu's 8-bit program fetch, per
-// docs/phase1_sdram_map.md) needs the same "fetch the containing granule,
-// then pick out the wanted slice" logic, so it's built once here rather
-// than copy-pasted per consumer.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Bridges a byte- or word-wide req/valid read port onto a 64-bit-granule arbiter port, because
+// sdram.sv's burst-4 controller only ever hands back a full 8-byte-aligned granule. Every narrow
+// Port 2 consumer needs the same "fetch the containing granule, then pick the slice", so it is
+// built once here.
 //
-// GRANULE CACHE: the bridge
-// keeps the last fetched granule and serves any request that falls inside
-// it WITHOUT a new SDRAM transaction -- a 1-cycle B_HIT response instead
-// of a full arbiter+controller round trip. The narrow consumers' access
-// patterns are dominated by sequential streams (68020 opcode fetch: 4
-// words/granule; Z80 opcode fetch: 8 bytes/granule; spritelut: runs of
-// consecutive tile codes), so this removes the majority of their Port 2
-// traffic -- which otherwise contends with sprite gfx fetches and was a
-// prime suspect in the rendering slowdown (docs/ROADMAP.md, "Fix the
-// slowdown"). All cached regions are ROM (written only by the HPS
-// download), so the only invalidation needed is the `inval` input, tied
-// to ioctl_download by dreamworld_sdram_top -- the cache is flushed
-// continuously for the whole download and starts cold afterwards.
+// GRANULE CACHE: the last fetched granule is kept and any request falling inside it is served
+// without a new transaction -- a 1-cycle hit instead of a full arbiter and controller round trip.
+// The narrow consumers are dominated by sequential streams (68020 opcode fetch, four words a
+// granule; spritelut, runs of consecutive tile codes), so this removes most of their Port 2 traffic,
+// which otherwise contends with the sprite fetches. Every cached region is ROM, written only by the
+// download, so the only invalidation needed is `inval`, tied to ioctl_download.
 //
-// Byte/word layout within a fetched granule, derived directly from
-// sdram.sv's own read-capture logic and sdram_chip_model.sv's write-mask
-// decode (not assumed) -- word i (0-3, ascending byte address) occupies
-// g_data[16*i +: 16] (sdram.sv: STATE_READ0->dout[15:0] is the FIRST/lowest-
-// address word, STATE_READ3->dout[63:48] the last), and within a 16-bit
-// word, the EVEN byte address (addr[0]=0) is the LOW byte, ODD (addr[0]=1)
-// is the HIGH byte (sdram_phy.sv: wrl <= we && !addr[0] selects the byte
-// sdram_chip_model.sv writes to mem[][7:0], the low half) -- ordinary
-// little-endian packing within each 16-bit lane. So for any byte address
-// `addr`, word_index = addr[2:1] and (for WORD_BYTES=1) byte_in_word =
-// addr[0] selecting low/high half of that word.
+// Byte and word layout within a granule, from sdram.sv's read capture and sdram_chip_model.sv's
+// write mask: word i (0-3, ascending byte address) occupies g_data[16*i +: 16], and within a word
+// the even byte address is the low byte -- ordinary little-endian packing. So for a byte address
+// `addr`, word_index = addr[2:1] and, for WORD_BYTES=1, byte_in_word = addr[0].
 //
-// req/valid contract: clients PULSE req (see maincpu.sv's rom_req comment
-// -- a held req would re-trigger this bridge) and hold `addr` stable until
-// the valid pulse. Toward the arbiter this bridge holds g_req until
-// g_valid, one request at a time (no pipelining -- matches
-// sdram_arbiter5's own single-outstanding-transaction design).
+// req/valid contract: clients PULSE req (a held req would re-trigger this bridge) and hold `addr`
+// stable until the valid pulse. Toward the arbiter the bridge holds g_req until g_valid, one request
+// at a time, matching the arbiter's single-outstanding-transaction design.
 
 module sdram_narrow_bridge #(
-	parameter int WORD_BYTES = 2   // 1 = byte-wide client (e.g. Z80/audiocpu),
-									 // 2 = word-wide client (e.g. spritelut, maincpu)
+	parameter int WORD_BYTES = 2   // 1 = byte-wide client, 2 = word-wide client
+									 // (spritelut and maincpu; this core uses 2 only)
 ) (
 	input  logic clk,
 	input  logic reset,
@@ -57,7 +37,7 @@ module sdram_narrow_bridge #(
 	output logic                     valid,
 	output logic [8*WORD_BYTES-1:0] data,
 
-	// wide granule side (one sdram_arbiter5 consumer port)
+	// wide granule side (one sdram_arbiter6 consumer port)
 	output logic         g_req,
 	output logic [24:0] g_addr,
 	input  logic         g_valid,
@@ -131,13 +111,12 @@ module sdram_narrow_bridge #(
 				B_HIT: begin
 					// valid pulses this cycle (see assign above). Go through
 					// B_DRAIN rather than straight to B_IDLE: a HELD-req
-					// client (the ADPCM-A path holds req until valid, unlike
-					// the pulse-req CPUs) clears its req only on the cycle
-					// AFTER seeing valid -- returning to B_IDLE immediately
-					// would re-latch the still-high req and serve a spurious
-					// second hit. The old all-miss bridge had the same
-					// re-latch exposure but its ~20-cycle round trip made the
-					// extra serve harmless; a 1-cycle hit would loop.
+					// client (the OKI path holds req until valid, unlike the
+					// pulse-req CPU fetches) clears its req only on the cycle
+					// AFTER seeing valid, so B_IDLE would re-latch the still-high
+					// req and serve a spurious second hit -- and a 1-cycle hit
+					// would loop, where the old all-miss bridge's ~20-cycle
+					// round trip made the extra serve harmless.
 					bstate <= B_DRAIN;
 				end
 				B_DRAIN: begin

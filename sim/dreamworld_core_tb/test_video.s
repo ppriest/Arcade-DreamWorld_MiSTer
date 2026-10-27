@@ -1,3 +1,4 @@
+; SPDX-License-Identifier: GPL-3.0-or-later
 ; dreamworld_core end-to-end video-path exercise: assembled with vasm
 ; (vasmm68k_mot -m68020 -Fbin), same convention as
 ; sim/maincpu_tb/test_maincpu.s (see that file's header for why hand-encoded

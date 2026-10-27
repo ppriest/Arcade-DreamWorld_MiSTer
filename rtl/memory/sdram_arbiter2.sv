@@ -1,24 +1,12 @@
-// Routes two req/valid read-only consumers onto one sdram_phy port --
-// same round-robin/hold-until-ack design as ddram_arbiter.sv (fixed-pointer
-// rotation: whoever's served rotates to the back, so sustained pressure from
-// one consumer can't starve the other), just narrowed to two consumers and
-// no download-write path.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Routes two read-only req/valid consumers onto one sdram_phy port: fixed-pointer round robin, the
+// served consumer rotating to the back, so sustained pressure from one cannot starve the other.
 //
-// Current use (rtl/memory/dreamworld_sdram_top.sv):
-// ONE instance, on Port 0, arbitrating tilemap layer 0 gfxrom against layer 1
-// gfxrom. Sprite gfxrom is NOT behind this module -- it got its own truly
-// dedicated Port 1 (no arbiter at all, single client straight onto
-// sdram_phy). The port-grouping this header used to describe (Port 0 =
-// tilemap only, Port 1 = sprite + spritelut sharing a second instance of
-// this module) was the ORIGINAL plan tb_video_pipeline_sdram validated but
-// is not what shipped -- spritelut ended up staying on the Port 2 5-way
-// arbiter (sdram_arbiter6) instead. Corrected so this comment matches the
-// actual instantiation, not the superseded plan.
+// One instance, on Port 0, arbitrating tilemap layer 0 against layer 1 gfxrom. The sprite gfxrom has
+// its own port (Port 1) and the spritelut sits on sdram_arbiter6.
 //
-// Request contract, both ports (c0_req/c1_req): HOLD req asserted until the
-// matching valid acknowledgment -- same reasoning as ddram_arbiter.sv (a
-// one-shot pulse would be lost if it arrived while the arbiter was busy
-// serving the other consumer).
+// Both consumers HOLD req until the matching valid: a one-shot pulse would be lost while the arbiter
+// was busy serving the other.
 
 module sdram_arbiter2 (
 	input  logic clk,

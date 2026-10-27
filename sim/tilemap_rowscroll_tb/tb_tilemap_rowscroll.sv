@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // Row-scroll indexing for tilemap_line_engine, against dreamwld.cpp screen_update:
 //

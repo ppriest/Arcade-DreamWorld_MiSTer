@@ -1,16 +1,12 @@
-// Decodes a raw 16-bit tilemap VRAM cell (named vram_cell -- "cell" is a
-// reserved SystemVerilog keyword, part of the config/cell/liblist/use
-// declaration syntax) into a gfx-ROM tile number and palette color-group
-// index, per get_tile_info<Layer> (psikyo_v.cpp:78-86):
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Decodes a raw 16-bit tilemap VRAM cell (vram_cell -- "cell" is a SystemVerilog keyword) into a
+// gfx-ROM tile number and palette colour group, per get_tile_info<Layer> (dreamwld.cpp:282-283):
 //
-//   tile_number = (vram_cell[12:0]) + 0x2000 * bank
+//   tile_number = vram_cell[12:0] + (bank << 13)
 //   color       = vram_cell[15:13] + layer*0x40
 //
-// `bank` (0-3) is the live tile-source bank selected via vreg layer-control
-// bit 10 on gunbird/btlkroad (m_ka302c_banking) -- fixed at 0 (layer 0) / 1
-// (layer 1) on sngkace, which never changes it (see docs/phase1_video_engine.md,
-// "Tile cell format"). `layer` is a static per-instance parameter (0 or 1),
-// not a runtime input -- each tilemap layer gets its own instance.
+// `bank` is the layer control word's bit 6 (dreamwld.cpp:334); this board exposes one bit, so 0 or
+// 1. `layer` is a static per-instance parameter, not a runtime input.
 
 module tile_cell_decode #(
 	parameter int LAYER = 0   // 0 or 1

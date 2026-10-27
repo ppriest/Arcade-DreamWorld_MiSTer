@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Minimal reset-only repro for maincpu.sv, built to isolate the crash
 // tb_maincpu.sv hit (ModelSim SIGSEGV + cascading memory-allocation
 // failures within the first ~5 clock cycles, still inside reset) --

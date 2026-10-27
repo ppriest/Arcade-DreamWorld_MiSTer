@@ -1,17 +1,13 @@
-// Sprite zoom scaling lookup: raw 4-bit zoom field -> (dst_size, dx), the
-// two quantities drawgfxzoom_core (src/emu/drawgfxt.ipp:738) needs to
-// render one 16x16 source tile at the requested scale. See
-// docs/phase1_video_engine.md ("The actual per-tile scaling algorithm") for
-// the full derivation. Shared by both X and Y (both dimensions use the same
-// 16px tile size and the same formula, just fed each axis's own raw zoom
-// field independently).
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Sprite zoom scaling lookup: raw 4-bit zoom field -> (dst_size, dx), the two quantities
+// drawgfxzoom_core (src/emu/drawgfxt.ipp:738) needs to render one 16x16 source tile at the
+// requested scale. Both axes use the same tile size and formula, each fed its own raw zoom.
 //
-// dst_size = 16 - (raw>>1) reduces to a plain subtract/shift, computed
-// directly rather than tabled. dx doesn't reduce to anything similarly
-// clean (it's really 1048576/dst_size), but only 8 distinct values exist,
-// so it's an exact small lookup table rather than real division in
-// hardware -- values computed with Python's exact integer arithmetic, not
-// hand-derived.
+// dst_size = 16 - (raw>>1) is a plain subtract/shift, computed directly. dx is really
+// 1048576/dst_size, which does not reduce, but only 8 values exist, so it is an exact small table
+// rather than a divider.
+//
+// This board has no zoom: raw_zoom is always 0 here, so dst_size is 16 and dx is 1.0.
 
 module sprite_zoom_lut (
 	input  logic [3:0]  raw_zoom,

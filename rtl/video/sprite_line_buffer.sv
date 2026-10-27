@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Double-buffered 308-pixel sprite line buffer, one entry a screen column.
 //
 // The swap happens at line_start, in hblank, so it never tears a visible line, and a bank is

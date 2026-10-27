@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // OKI phrases through the core's sound block and the real SDRAM path, for
 // sim/oki_phrase_tb/run.py to compare with scripts/oki_model.py (MAME's decoder).

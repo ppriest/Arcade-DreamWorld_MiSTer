@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // A window of MAME's OKI writes replayed through the core's sound block and the real SDRAM path;
 // the mixed output recorded once an OKI sample for sim/oki_trace_tb/run.py to compare with

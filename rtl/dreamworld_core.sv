@@ -1,27 +1,16 @@
-// CPU + video core: wires rtl/cpu/maincpu.sv (the 68EC020 bus) into the
-// memory glue (rtl/memory/dpram.sv, rtl/video/vreg_decode.sv,
-// rtl/video/spriteram_dbuf.sv) and the video pipeline
-// (rtl/video/video_timing.sv, tilemap_line_engine.sv x2, the per-scanline
-// sprite path, compositor.sv). ROM contents are external, behind the
-// req/valid ports (rtl/memory/dreamworld_sdram_top.sv); HPS/DIP/CRT glue is
-// one level up in DreamWorld.sv.
-//
-// The video pipeline is still the Psikyo core's (psikyo_v.cpp) apart from
-// vreg_decode's control word; dreamwld.cpp's sprite format, sprite LUT
-// redirect, layer offsets and 308-pixel screen are not implemented yet.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// CPU + video core: wires rtl/cpu/maincpu.sv (the 68EC020 bus) into the memory glue (dpram,
+// vreg_decode, spriteram_dbuf) and the video pipeline (video_timing, tilemap_line_engine x2, the
+// per-scanline sprite path, compositor). ROM contents are external, behind the req/valid ports
+// (rtl/memory/dreamworld_sdram_top.sv); HPS/DIP/CRT glue is one level up in DreamWorld.sv.
 //
 // ---- Sprite pipeline per-frame sequencing ----
-// Per-scanline sprites, sequenced to psikyo_v.cpp's screen_vblank(): at
-// frame_start, sprite_line_list rebuilds its compact table FROM the
-// spriteram snapshot (get_sprites), then spriteram_dbuf.copy_start
-// refreshes that snapshot from the live RAM (m_spriteram->copy) -- the
-// capture is at the frame boundary and the table a frame renders from is
-// one buffer-generation old, both exactly the reference. Each visible
-// line is then rendered one line ahead of scanout into a double 320-pixel
-// line buffer; line_start hard-resyncs an overrunning render (clipping at
-// worst that one line's tail sprites, counted on the debug overlay). The
-// whole-frame renderer + 1.7 Mbit frame buffer this replaced, and its
-// history, are recorded in docs/sprite_buffering.md.
+// At frame_start, sprite_line_list rebuilds its compact table FROM the spriteram snapshot
+// (dreamwld.cpp draw_sprites), then spriteram_dbuf.copy_start refreshes that snapshot from the
+// live RAM (m_spriteram->copy). The capture is at the frame boundary, so a frame renders from the
+// snapshot taken one frame earlier, matching the reference. Each visible line is rendered one
+// line ahead of scanout into a double-buffered 308-pixel line buffer; line_start hard-resyncs an
+// overrunning render, clipping at worst that line's tail sprites (counted on the debug overlay).
 module dreamworld_core #(
 	parameter bit DEBUG_TRACER  = 1'b1
 ) (
@@ -418,30 +407,20 @@ module dreamworld_core #(
 	);
 
 `ifdef DEBUG_ISSP
-	// JTAG READ probe for spriteram (instance "S") -- the debug-overlay VRAM
-	// dump (l0/l1/vregs/palette) does not cover spriteram (no row budget
-	// left in the 224-line overlay; see decode_vram.py), so sprite
-	// attribute words are inspected over JTAG instead. Reads the
-	// CPU-VISIBLE buffer (the one
-	// spriteram_dbuf's cpu_addr/cpu_rdata port serves, i.e. the SAME
-	// buffer MAME's own debugger/memory viewer shows -- not the render
-	// engine's snapshot copy) so a probed value is directly comparable to
-	// a MAME-side dump at the same word address, no double-buffering
-	// translation needed.
+	// JTAG read probe for spriteram (instance "S"): the debug overlay's VRAM dump
+	// covers l0/l1/vregs/palette only, so sprite attribute words are inspected
+	// over JTAG. It reads the CPU-visible buffer (spriteram_dbuf's
+	// cpu_addr/cpu_rdata port), the same one MAME's memory viewer shows, so a
+	// probed value compares directly with a MAME dump at the same word address.
 	//
-	// Read-only: the source address is an ordinary combinational select,
-	// gated on effective_pause (with the CPU paused, spr_cpu_wel/weh are
-	// naturally low, so overriding cpu_addr alone can't collide with a real
-	// write). One register of read latency
-	// (spriteram_dbuf's cpu_rdata is a normal synchronous BRAM output), so
-	// the probe echoes effective_pause back too -- if it reads 0, the
-	// returned data is whatever the LIVE game's own current address
-	// happened to be, not the requested one.
+	// Read-only: the source address is a combinational select gated on
+	// effective_pause (with the CPU paused, spr_cpu_wel/weh are low, so the
+	// override cannot collide with a real write). spriteram_dbuf's cpu_rdata
+	// has one register of latency, so the probe echoes effective_pause back
+	// too -- if it reads 0, the data is whatever the live game's own address
+	// held, not the requested one.
 	//
-	// Usage (scripts/read_spriteram.tcl, word index 0-4095 -- attribute
-	// table 0x000-0xBFF per docs/phase1_memory_map.md, display list
-	// 0xC00-0xFFE, control word 0xFFF):
-	//   quartus_stp -t scripts/read_spriteram.tcl <addr_hex>
+	// Word index 0-4095, 16 bits each; records 0-511 are words 0-2047.
 	wire [11:0] dbg_spr_rd_addr;
 	wire [11:0] spr_a_addr_muxed = effective_pause ? dbg_spr_rd_addr : spr_cpu_addr;
 

@@ -110,7 +110,7 @@ echo "--- vlog: RTL + testbench ---"
 #
 # VDEFS carries extra +define+ switches for an A/B.
 #
-# -suppress 7061: some vendored cores (fx68k) drive parts of an array from more than one
+# -suppress 7061: a vendored core drove parts of an array from more than one
 # always_ff. Quartus accepts it; ModelSim refuses by default.
 # shellcheck disable=SC2086
 "$MS/vlog.exe" -quiet -sv -work work -suppress 7061 \

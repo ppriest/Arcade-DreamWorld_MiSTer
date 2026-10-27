@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Mixing, dreamwld.cpp screen_update: layer 0 (opaque), then layer 1 (pen 0 transparent),
 // then sprites (pen 0 transparent, already applied by the sprite engine, so sp_present means
 // a drawn pixel). There are no priority bits.

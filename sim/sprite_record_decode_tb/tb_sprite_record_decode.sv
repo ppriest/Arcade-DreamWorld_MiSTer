@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // sprite_record_decode against draw_sprites (dreamwld.cpp 203-260). The fields are checked
 // directly; the position, exhaustively over x and y, by drawing a sprite of every size both

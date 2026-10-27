@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Checks sprite_record_fetch against a synchronous spriteram model:
 // correct base-address computation (sprite_index*4) and correct
 // word-to-port mapping, at the boundary indices (0, 767) and a mid-range

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """MAME's OKI M6295, transcribed, for the sound benches.
 
     python scripts/oki_model.py dreamwld oki1            # list the valid phrases

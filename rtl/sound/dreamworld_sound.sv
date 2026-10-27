@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The board's sound: two OKI M6295 (jt6295), each with its sample-ROM bank register, mixed to
 // mono (dreamwld.cpp 398-414, 431-446, 824-840).
 //

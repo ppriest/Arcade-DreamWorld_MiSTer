@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
 -- Every write to the OKI and OKI-bank registers, with the machine time, for scripts/oki_trace.py.
 -- dreamwld.cpp: oki1 at 0xC00018, its bank at 0xC0000F, oki2 at 0xC00028, its bank at 0xC0002F
 -- (byte handlers on the 68020's 32-bit bus). One line per write: "seconds offset data mask",

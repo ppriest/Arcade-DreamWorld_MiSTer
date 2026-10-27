@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Render a captured frame the way dreamwld.cpp's screen_update does, and compare it with MAME's.
 
     python scripts/render_model.py debug/dreamwld-t19            # model.png, model_idx.bin, report

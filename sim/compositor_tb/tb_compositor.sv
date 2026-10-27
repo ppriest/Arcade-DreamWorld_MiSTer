@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // compositor against dreamwld.cpp screen_update's mixing: layer 0 opaque, layer 1 over it on
 // any pen but 0, sprites over both; tiles at 0x800 + colour*16 + pen, sprites at colour*16 + pen.

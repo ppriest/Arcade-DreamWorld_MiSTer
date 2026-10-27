@@ -60,7 +60,8 @@ direct.
 
 ### MiSTer-devel/Template_MiSTer — GPL-2.0-or-later (`sys/`)
 
-The framework, unmodified. Its grant is "or later", which is what lets it combine with GPL-3 code.
+The framework, unmodified, pinned at `9c8eadb` (57 files, byte-identical to upstream). Its grant is
+"or later", which is what lets it combine with GPL-3 code.
 
 ## Reference material, not code
 

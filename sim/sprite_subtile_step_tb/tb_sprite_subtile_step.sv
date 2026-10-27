@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Checks sprite_subtile_step against an independently-computed reference.
 //
 // This module has two kinds of input dimension and they're tested with

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Verifies rtl/memory/sdram/sdram.sv (the burst-4-read-extended controller,
 // see PROVENANCE.md for what changed from Sorgelig's upstream reference)
 // against a real command-decoding behavioral chip model
@@ -22,10 +23,10 @@
 //      correct, independently-seeded data -- not a stale/crossed result.
 //   4. Latency sanity check: measures req-to-ack cycle count for a single
 //      uncontended read and confirms it's small and FIXED (bounded), the
-//      actual point of this whole DDRAM->SDRAM pivot (see
-//      docs/phase1_sdram_map.md) -- not a specific magic number, just "small
-//      and doesn't vary with address," so this check isn't tied to exact
-//      RASCAS_DELAY/CAS_LATENCY constants that might reasonably change.
+//      actual point of this whole DDRAM->SDRAM pivot -- not a specific magic
+//      number, just "small and doesn't vary with address," so this check
+//      isn't tied to exact RASCAS_DELAY/CAS_LATENCY constants that might
+//      reasonably change.
 //   5. Isolated reproduction of a real bug found in rtl/dreamworld_top.sv
 //      integration (docs/ROADMAP.md's "Progress" -- KNOWN OPEN ISSUE):
 //      back-to-back single-port reads to DIFFERENT rows, issued with zero
@@ -217,7 +218,7 @@ module tb_sdram;
 			errors++;
 			$display("FAIL Case4: latency not small/fixed -- cyc0=%0d cyc1=%0d", cyc0, cyc1);
 		end else begin
-			$display("Case4 PASS: uncontended read latency small and fixed (%0d cycles) -- the actual point of the SDRAM pivot, see docs/phase1_sdram_map.md", cyc0);
+			$display("Case4 PASS: uncontended read latency small and fixed (%0d cycles) -- the actual point of the SDRAM pivot", cyc0);
 		end
 
 		// ---- Case 5: back-to-back different-row reads, zero gap, single port ----
@@ -273,10 +274,7 @@ module tb_sdram;
 		// sim/dreamworld_top_tb/tb_dreamworld_top.sv's actual failing topology
 		// (two genuinely independent requestors on the shared controller,
 		// sdram.sv's own STATE_IDLE priority chain arbitrating between them
-		// every cycle, not one port serialized by a single task call) --
-		// sim/sdram_arbiter5_tb/tb_sdram_arbiter5.sv's own Case 2 already
-		// checks simultaneous multi-client correctness, but only for a
-		// handful of requests, not a sustained hundreds-of-iterations loop.
+		// every cycle, not one port serialized by a single task call).
 		begin
 			logic [63:0] pA_exp, pB_exp;
 			int          failA, failB, first_fail;

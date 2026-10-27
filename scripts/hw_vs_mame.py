@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Find the MAME frame each hardware screenshot shows, and diff it.
 
     python scripts/hw_vs_mame.py dreamwld debug/hw/p2/s*.png --from 300 --to 7200

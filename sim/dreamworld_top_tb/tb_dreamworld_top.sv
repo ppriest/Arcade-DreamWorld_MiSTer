@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // Full-chain functional test for rtl/dreamworld_top.sv: the SAME CPU program
 // tb_dreamworld_core.sv used (sim/dreamworld_core_tb/test_video.s), but loaded

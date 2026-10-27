@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Main CPU: 68EC020 at 16 MHz (dreamwld.cpp baryon(): XTAL 32MHz/2, "16MHz
 // verified"). Drives the vendored TG68KdotC_Kernel directly (rtl/cpu/tg68k/,
 // PROVENANCE.md; every kernel signal needs an explicit zero initializer,
@@ -14,10 +15,10 @@
 // word cycles. Each I/O handler below fires on the word MAME's handler lives on, so a
 // long access to it fires once; the games use byte accesses there (docs/boot_trace_mame.txt).
 //
-// Verified in the Psikyo core by sim/maincpu_tb/tb_maincpu.sv: real ROM
-// req/valid fetch, all 6 BRAM regions, the 32-bit input-port read, and the
-// vblank IRQ (keep the vector table real when extending that bench: a zeroed
-// one once made the IRQ look like a CPU fault).
+// Verified by sim/maincpu_tb/tb_maincpu.sv: real ROM req/valid fetch, all 6
+// BRAM regions, the 32-bit input-port read and the vblank IRQ (keep the
+// vector table real when extending that bench: a zeroed one once made the
+// IRQ look like a CPU fault).
 //
 // IPL: the kernel inverts its IPL input (`IPL_nr <= NOT IPL`), so level 4 is
 // requested by driving 3'b011, not 3'b100.

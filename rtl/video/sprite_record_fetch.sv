@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Fetches one sprite's 4-word (8-byte) record from the sprite RAM snapshot: record n at word
 // 4n, laid out Y/X/attr/code_lo (sprite_record_decode's port names). sprite_line_list walks
 // n = 0-511. One synchronous read port, the 1-cycle read every BRAM interface here uses.

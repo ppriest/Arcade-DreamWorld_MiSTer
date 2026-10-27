@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Converts test_video.bin (vasm -Fbin output) into a $readmemh-compatible
 # hex file, one 16-bit word per line -- same conversion
 # sim/maincpu_tb/gen_rom_hex.py already does for that testbench.

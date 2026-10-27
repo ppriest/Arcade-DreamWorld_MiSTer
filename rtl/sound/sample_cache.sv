@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Granule cache with next-granule prefetch for a sample-ROM stream.
 // Ported from the Psikyo core's adpcma_sample_cache.sv.
 //

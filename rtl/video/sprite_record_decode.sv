@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Decodes one sprite record, dreamwld.cpp draw_sprites (lines 203-260), as four 16-bit words
 // (record n at sprite RAM word 4n):
 //

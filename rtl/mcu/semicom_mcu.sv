@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The protection MCU: an 87C52 at 16 MHz (jt8052) running its own 8 KB ROM, and the board
 // logic between it and the 68020 as dreamwld.cpp models it (lines 736-794):
 //
@@ -12,7 +13,7 @@
 //
 // The ROM is written by the download (dreamworld_sdram_top's tap), 4K x 16 with byte
 // enables, even byte in the low lane, and read a byte at a time on cen as jt8052 expects
-// (one cen of latency, like Eolith's BRAMs). Held in reset with the rest of the core.
+// (one cen of read latency). Held in reset with the rest of the core.
 module semicom_mcu (
 	input  logic         clk,
 	input  logic         reset,

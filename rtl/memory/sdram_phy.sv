@@ -1,22 +1,15 @@
-// Single-port wrapper around one of rtl/memory/sdram/sdram.sv's three
-// physical ports, translating its toggle-based req/ack handshake into this
-// project's standard req(pulse-while-!busy)/valid(pulse)/busy client
-// interface -- same shape as ddram_phy.sv, so sdram_arbiter (built the same
-// way as ddram_arbiter.sv) can sit on top without its own consumers needing
-// to know or care which physical transport is underneath.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// One of sdram.sv's three physical ports, translating its toggle-based req/ack handshake into this
+// project's req(pulse while !busy)/valid/busy shape -- the same shape ddram_phy.sv presents, so the
+// arbiters built for it sit on either without their consumers knowing which transport is underneath.
 //
-// Address is a 25-bit BYTE offset into the SDRAM chip's real 32MB capacity
-// (MT48LC16M16, see docs/phase1_sdram_map.md) -- narrower than ddram_phy's
-// 28-bit DDRAM-window address on purpose, matching the smaller real chip
-// rather than padding to the old DDRAM window's width.
+// Address is a 25-bit BYTE offset into the chip's real 32 MB (MT48LC16M16), narrower than
+// ddram_phy's 28-bit DDRAM window because the chip is smaller.
 //
-// Two transaction shapes, matching sdram.sv's own port contract:
-//   - READ:  8-byte-aligned granule in (`addr`'s low 3 bits should be 0 --
-//            see docs/phase1_sdram_map.md), full 64-bit `port_dout` out,
-//            assembled by sdram.sv's own burst-4 read logic.
-//   - WRITE: single BYTE in (`wdata`), `addr[0]` selects the low or high
-//            byte lane of the 16-bit word at `addr[24:1]` -- matches the
-//            HPS ioctl_download path's byte-at-a-time writes.
+//   READ   an 8-byte-aligned granule, addr[2:0] zero, full 64-bit port_dout out, assembled by
+//          sdram.sv's own burst-4 read logic
+//   WRITE  one byte, addr[0] choosing the lane of the 16-bit word at addr[24:1], as the
+//          ioctl_download path writes a byte at a time
 
 module sdram_phy (
 	input  logic clk,

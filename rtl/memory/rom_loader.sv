@@ -1,22 +1,15 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Fast ROM loading: bulk copy from DDR3 into the SDRAM ROM map.
 //
-// The slow path streams the ROM through hps_io's ioctl interface a byte at a
-// time, stalling the HPS with ioctl_wait for an SDRAM transaction on every
-// one of ~14MB. The fast path removes the FPGA from the transfer entirely:
-// an `address="0x30000000"` attribute on the .mra's <rom index="0"> makes
-// the HPS DMA the ROM straight into DDR3, so the core sees ioctl_download
-// assert and deassert with NO ioctl_wr pulses at all. This module then
-// copies DDR3 -> SDRAM at full speed with the core held in reset, reading
-// 8-byte granules and writing them as four 16-bit SDRAM words.
-// (Mechanism taken from srg320/Arcade-PsikyoSH2_MiSTer.)
-//
-// The two paths coexist: an .mra WITHOUT the address attribute still streams
-// through ioctl and sdram_download exactly as before. The caller decides
-// which ran by watching whether any ioctl_wr arrived during the download.
+// With address="0x30000000" on the .mra's <rom index="0">, the HPS DMAs the ROM straight into
+// DDR3 and the core sees ioctl_download assert and deassert with no ioctl_wr pulses at all; this
+// copies DDR3 -> SDRAM with the core in reset, 8-byte granules in, four 16-bit words out. An .mra
+// without the attribute still streams through ioctl and sdram_download, and the caller tells the
+// two apart by whether any ioctl_wr arrived. (Mechanism from srg320/Arcade-PsikyoSH2_MiSTer.)
 module rom_loader #(
-	// Bytes to copy: the whole SDRAM ROM map (dreamworld_sdram_top.sv).
-	// Copying the full map unconditionally avoids having to know each set's
-	// real length, and costs only the copy time of the padding.
+	// Bytes to copy: the whole SDRAM ROM map (dreamworld_sdram_top.sv). Copying
+	// it unconditionally means no set's real length has to be known, at the cost
+	// of the padding's copy time.
 	parameter logic [27:0] LENGTH = 28'h1280000
 ) (
 	input  logic clk,

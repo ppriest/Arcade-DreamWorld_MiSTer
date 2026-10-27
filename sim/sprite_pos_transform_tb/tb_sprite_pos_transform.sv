@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Checks sprite_pos_transform's offset correction and zoom transform
 // against independently-computed reference values, swept over the actual
 // domain sprite_record_decode ever produces: x_pos in [-128,383] (512

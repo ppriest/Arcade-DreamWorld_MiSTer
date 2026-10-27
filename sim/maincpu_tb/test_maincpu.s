@@ -1,3 +1,4 @@
+; SPDX-License-Identifier: GPL-3.0-or-later
 ; maincpu bus/memory-map exercise: assembled with vasm
 ; (vasmm68k_mot -m68020 -Fbin), matching sim/tg68k_spike/test020.s's own
 ; "don't hand-encode opcodes" practice (see that file's header for why).
@@ -6,12 +7,12 @@
 ; directly by the testbench's ROM preload, not by this file, same
 ; convention as test020.s.
 ;
-; Exercises every region in docs/phase1_memory_map.md's 68EC020 program
+; Exercises every region in docs/HARDWARE_NOTES.md's 68EC020 program
 ; address map in turn (ROM fetch is implicit throughout -- every
-; instruction/immediate here comes from ROM), plus the sngkace board's
-; sound-latch and input-port addresses. Each write uses a distinct,
-; recognizable value so the testbench can confirm the right byte/word
-; landed in the right region, not just "some write happened".
+; instruction/immediate here comes from ROM), plus an unmapped write and
+; the input-port address. Each write uses a distinct, recognizable value so
+; the testbench can confirm the right byte/word landed in the right region,
+; not just "some write happened".
 
         org     $8
 
@@ -45,15 +46,15 @@ start:
         move.w  #$1111,d5
         move.w  d5,$fe0000.l
 
-        ; ---- input port read (sngkace overlay, 0xC00000-0xC00003, P1/P2) --
-        ; written back to work RAM so the testbench can confirm the read
-        ; value externally (this module has no other observable output for
-        ; a plain register load) ----
+        ; ---- input port read (0xC00000-0xC00003, P1/P2) -- written back to
+        ; work RAM so the testbench can confirm the read value externally
+        ; (this module has no other observable output for a plain register
+        ; load) ----
         move.l  $c00000.l,d6
         move.l  d6,$fe0004.l
 
-        ; ---- unmapped byte write (the Psikyo sound latch address): must
-        ; complete without wedging the bus ----
+        ; ---- unmapped byte write (no handler at 0xC00013 on this board):
+        ; must complete without wedging the bus ----
         move.b  #$77,d7
         move.b  d7,$c00013.l
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Fixture for sim/oki_tb: dreamwld's first OKI ROM (5.bin, 512 KB) as $readmemh text.
 
     python sim/oki_tb/gen_fixture.py      # from the repository root

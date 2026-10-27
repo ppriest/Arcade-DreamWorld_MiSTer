@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // Flip Screen check for tilemap_line_engine: a flipped screen must be the
 // unflipped screen rotated 180 degrees, pixel for pixel. So for every line v,
@@ -12,7 +13,7 @@
 //
 // Content is chosen so an error cannot hide: every VRAM cell, every tile row
 // and every row-scroll entry differs (hash-derived), the line timing is the
-// real video_timing raster at the real 1-in-12 ce_pix, and the sweep covers
+// real video_timing raster at the real 1-in-8 ce_pix, and the sweep covers
 // all four tilemap sizes, scroll values with every fine-x residue class the
 // cases hit, rowscroll off / per-line / per-tile, and the first, last and
 // interior lines -- including a rowscroll value that pushes the source window
@@ -26,7 +27,7 @@ module tb_tilemap_flip;
 	// ---- real raster timing (hcnt / h_active / line_start / ce_pix) ----
 	logic [3:0] ce_cnt = 0;
 	wire ce_pix = (ce_cnt == 0);
-	always_ff @(posedge clk) ce_cnt <= (ce_cnt == 11) ? 4'd0 : ce_cnt + 4'd1;
+	always_ff @(posedge clk) ce_cnt <= (ce_cnt == 7) ? 4'd0 : ce_cnt + 4'd1;
 
 	logic [8:0] hcnt, vcnt_raw;
 	logic [7:0] vcnt_active, vcnt_next_active, vcnt_next2_active;

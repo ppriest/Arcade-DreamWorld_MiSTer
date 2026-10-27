@@ -1,9 +1,8 @@
 # DreamWorld state inventory
 
-What a savestate or a state dump has to carry, kept current as RTL lands (the skill's
-`savestates.md`). "Skip" needs a reason: a ROM table from the `.mra`, or something re-derived
-every frame. The inherited Psikyo RTL was not written for state capture; borrowable ports are
-noted where they exist.
+What a savestate or a state dump has to carry, kept current as RTL lands. "Skip" needs a reason:
+a ROM table from the `.mra`, or something re-derived every frame. The video and memory RTL was
+not written for state capture; borrowable ports are noted where they exist.
 
 ## RAMs
 
@@ -35,7 +34,7 @@ noted where they exist.
 
 | Chip | Module | Addressable? | Tier | Note |
 |---|---|---|---|---|
-| 68EC020 | TG68K.C kernel | no | self-dump stub, as planned in the Psikyo core's `docs/savestates.md` | |
+| 68EC020 | TG68K.C kernel | no | self-dump stub | |
 | 87C52 | jt8052 | registers in `jt8052_regs` and SFRs; no state port | to be added | the program is a 0x3A-byte loop; saving at its wait loop needs PC, DPTR, A, P1, P2 |
 | M6295 x2 | jt6295 (`dreamworld_sound`) | no: channel state circulates in `jt6295_serial`'s shift registers | to be added | per voice: address, stop, attenuation, ADPCM signal and step; MAME saves `m_voice[]`, `m_command` |
 

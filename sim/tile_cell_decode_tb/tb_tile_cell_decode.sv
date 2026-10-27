@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Exhaustively checks tile_cell_decode (both LAYER=0 and LAYER=1 instances)
 // against the reference formula from get_tile_info<Layer>:
 //   tile_number = vram_cell[12:0] + 0x2000*bank

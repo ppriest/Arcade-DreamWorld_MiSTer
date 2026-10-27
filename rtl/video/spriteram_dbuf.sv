@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Sprite RAM (0x400000-0x401FFF) and the copy the sprites are drawn from: dreamwld.cpp's
 // screen_vblank copies sprite RAM to m_spritebuf[0] at vblank start, and draw_sprites reads
 // only that copy.

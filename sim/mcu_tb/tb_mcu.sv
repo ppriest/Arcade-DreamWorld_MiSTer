@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // jt8052 running dreamwld's MCU ROM (87c51rap.bin) against dreamwld.cpp's port model, with
 // the 68020 side played by this bench the way MAME's trace shows it: write C00020, 50 us,

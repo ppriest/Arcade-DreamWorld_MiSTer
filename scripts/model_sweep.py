@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Capture scenes from every set and check scripts/render_model.py against each.
 
     python scripts/model_sweep.py                       # all sets, the default scene list

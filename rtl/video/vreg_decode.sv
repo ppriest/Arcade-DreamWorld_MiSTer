@@ -1,14 +1,13 @@
-// Video-register decode for 0x804000-0x807FFF. dreamwld.cpp maps the
-// row-scroll RAM at 0x804000-0x8043FF (word 0x000-0x0FF layer 0, 0x100-0x1FF
-// layer 1) and the "vregs" share at 0x804400-0x805FFF; the scroll and layer
-// control words sit at the same offsets as on the Psikyo boards. The
-// tilemap engines read the row-scroll tables every line and six
-// single-value registers (Y-scroll/X-scroll/control per layer) live.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Video-register decode for 0x804000-0x807FFF. dreamwld.cpp maps the row-scroll RAM at
+// 0x804000-0x8043FF (words 0x000-0x0FF layer 0, 0x100-0x1FF layer 1) and the vregs at
+// 0x804400-0x805FFF; the scroll and layer-control words sit at the same offsets as on the Psikyo
+// boards. The tilemap engines read the row-scroll tables every line, and six single-value registers
+// (Y scroll, X scroll, control per layer) live here.
 //
-// Backing storage is duplicated into two independent dpram copies (both
-// always written identically from the CPU port) to get a second BRAM read
-// port for the row-scroll tables. The six registers are latched into
-// flip-flops on a matching CPU write instead of being read from the dpram.
+// Storage is duplicated into two independent dpram copies, written identically from the CPU, to get
+// a second BRAM read port for the row-scroll tables. The six registers are latched into flip-flops
+// on a CPU write instead of being read from the dpram.
 module vreg_decode (
 	input  logic         clk,
 	input  logic         reset,

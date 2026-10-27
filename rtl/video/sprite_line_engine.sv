@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Per-scanline sprite renderer: draws the sprites crossing one line into a 308-pixel line
 // buffer (sprite_line_buffer), the line before it is shown.
 //
@@ -56,12 +57,12 @@ module sprite_line_engine (
 
 	// ---- record register + combinational decode chain ----
 	// rec_q re-registers the record RAM's output before the decode chain.
-	// The frame engine ran the same chain from rf_word_* FABRIC registers,
-	// which the fitter places next to the decode logic; an M10K's Q has a
-	// fixed location and pays its routing BEFORE the same logic depth --
-	// running the chain straight off rec_data was a ~400-path failing group.
-	// The hop costs no time: S_REC_WAIT already exists for the RAM read, so
-	// rec_q loads there and S_CAPTURE decodes from it, same two cycles.
+	// The earlier frame-buffer renderer ran the same chain from fabric
+	// registers, which the fitter places next to the decode logic; an M10K's
+	// Q has a fixed location and pays its routing BEFORE the same logic depth
+	// -- running the chain straight off rec_data was a ~400-path failing
+	// group. The hop costs no time: S_REC_WAIT already exists for the RAM
+	// read, so rec_q loads there and S_CAPTURE decodes from it.
 	logic [63:0] rec_q;
 	always_ff @(posedge clk) rec_q <= rec_data;
 
@@ -107,7 +108,7 @@ module sprite_line_engine (
 	logic [4:0]        a_dst_size_x, a_dst_size_y;
 	logic [16:0]       a_dx_x, a_dx_y;
 
-	// ---- sub-tile stepping (identical to the parked engine) ----
+	// ---- sub-tile stepping (identical to the earlier frame-buffer renderer) ----
 	logic [3:0] ix, iy;
 	logic [5:0] subtile_ordinal;
 	logic [3:0] dst_row;
@@ -116,33 +117,26 @@ module sprite_line_engine (
 	logic [16:0]       st_sub_code;
 
 	// Visitation is row-major, so the ordinal for an arbitrary (ix,iy) is
-	// iy*nx + ix -- the frame engine could just count because it visited
+	// iy*nx + ix -- the earlier renderer could just count because it visited
 	// every sub-tile; here we jump straight to the row containing the line.
 	//
 	// ord_prod is 8 bits and BOTH operands are widened to 8 before the
-	// multiply, deliberately. This was written as
+	// multiply, deliberately. Written as
 	//     6'({iy * a_nx}) + 6'({2'd0, ix})
-	// which is wrong: the operands of a concatenation are self-determined,
-	// so `iy * a_nx` was evaluated at max(4,4) = 4 BITS and wrapped mod 16
-	// before the 6' cast ever saw it. The outer cast looks like it sets the
-	// width and does not. Large sprites therefore re-used tile codes from
-	// their own top rows -- nx=8 gave ordinals 0,8,0,8,... (a two-row
-	// repeat), nx=6 gave 0,6,12,2,8,14,4,10 (everything inside the top ~2.7
-	// rows) -- while any sprite with iy*nx < 16 was unaffected, which is why
-	// small sprites looked perfect. Seen on hardware as large sprites drawing
-	// similar-but-wrong tiles. Max value is 7*8+7 = 63, so 8 bits is ample
-	// and the [5:0] slice cannot lose anything.
+	// the operands of the concatenation are self-determined, so `iy * a_nx`
+	// is evaluated at 4 bits and wraps mod 16 before the 6' cast sees it --
+	// the outer cast does not set the width. Large sprites then re-used tile
+	// codes from their own top rows: nx=8 gave 0,8,0,8,... and nx=6 gave
+	// 0,6,12,2,8,14,4,10, while iy*nx < 16 was unaffected. Max is 7*8+7 = 63,
+	// so 8 bits is ample and the [5:0] slice loses nothing.
 	// subtile_ordinal is a REGISTER, not a combinational product. Computing
-	// it as iy*a_nx + ix in the same cycle it is used put the multiply
-	// directly into lut_addr's path, which runs off-module to the spritelut
-	// SDRAM bridge -- 582 failing paths (a_nx -> u_lut_bridge|tag_inflight)
-	// in the first build after the width fix. The frame engine never had
-	// this problem because it only ever incremented a counter; the line
-	// engine additionally has to JUMP to the start of the hit row, so the
-	// multiply is kept but retimed: ord_prod is evaluated off the registered
-	// iy/a_nx and loaded into the ordinal at the S_FIND_ROW hit (a plain
-	// register-to-register path for a 4x4 multiply), and the S_COL walk then
-	// just increments, exactly like the frame engine.
+	// it in the cycle it is used puts the multiply into lut_addr's path,
+	// which runs off-module to the spritelut SDRAM bridge -- 582 failing
+	// paths in the first build after the width fix. The earlier renderer
+	// only incremented a counter; the line engine has to jump to the start
+	// of the hit row, so the multiply is retimed: ord_prod is evaluated off
+	// the registered iy/a_nx and loaded into the ordinal at the S_FIND_ROW
+	// hit, and the S_COL walk then increments.
 	logic [7:0] ord_prod;
 	assign ord_prod = {4'd0, iy} * {4'd0, a_nx};
 
@@ -154,7 +148,7 @@ module sprite_line_engine (
 		.sub_x(st_sub_x), .sub_y(st_sub_y), .sub_code(st_sub_code)
 	);
 
-	// STAGE-B REGISTER, ported from the frame engine: st_sub_x feeds the
+	// STAGE-B REGISTER, ported from the earlier renderer: st_sub_x feeds the
 	// S_COL onscreen check through the sub-tile multiply, and consuming it
 	// raw put that whole cone in series with the fb_* write enables -- the
 	// entire failing-path population of the first line-path build. ix (and

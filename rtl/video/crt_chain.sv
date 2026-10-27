@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // CRT Adjust: native raster -> crt_vsize (V-Size) -> crt_adjust (H-Position,
 // V-Shift, H-Size) -> arcade_video. Passthrough while `active` is low.
 module crt_chain #(
@@ -36,8 +37,8 @@ module crt_chain #(
 		cabinet <= vsize_cabinet;
 	end
 
-	// PVM mode drops lines from the end of the frame, but Psikyo's blanking is
-	// mostly before the picture, so taller settings would cut its bottom.
+	// PVM mode drops lines from the end of the frame, but DreamWorld's blanking
+	// is mostly before the picture, so taller settings would cut its bottom.
 	// Delaying the VSync crt_vsize sees moves the dropped lines into the back
 	// porch; the picture moves up as it grows.
 	localparam logic signed [6:0] PVM_MARGIN  = 7'(PVM_FREE_LINES - 1);

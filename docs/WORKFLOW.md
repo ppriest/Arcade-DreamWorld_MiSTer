@@ -219,8 +219,8 @@ cannot.
 
 ## 6. Counters and the trace ring
 
-`rtl/debug/debug_counter.sv` and `rtl/debug/debug_tracer.sv`, carried over with their design
-rationale in the file headers:
+`rtl/debug/debug_tracer.sv` (plus `debug_counter.sv` where a core has one), carried over with
+their design rationale in the file headers:
 
 - **No reset port at all.** Quartus powers registers to zero at configuration, so a counter with no
   reset shows what happened since the FPGA was programmed. A counter cleared by the reset under
@@ -488,4 +488,5 @@ each **done** as it lands.
 | `sdram_pattern_test.py`, `sdram_dump_check.py` | known-pattern SDRAM test through the real download path | Seta, Fuuki |
 | `regen_mmr.sh --check` | drift check for generated register-map modules, where used | GX |
 
-And from `rtl/debug/`: `issp_probe.sv`, `debug_tracer.sv`, `debug_counter.sv`, `pause_control.sv`.
+And from `rtl/debug/`: `issp_probe.sv`, `debug_tracer.sv`, and, where the core has them,
+`debug_counter.sv` and `pause_control.sv`.

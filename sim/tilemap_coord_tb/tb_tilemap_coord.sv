@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Checks tilemap_coord against an independently-computed expected result
 // (using actual %, not the RTL's masking trick) across a spread of
 // effective-position values per mode: 0..4095 (covers at least one full

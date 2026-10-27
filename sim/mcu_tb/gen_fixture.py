@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Fixture for sim/mcu_tb: dreamwld's MCU ROM as $readmemh text.
 
     python sim/mcu_tb/gen_fixture.py      # from the repository root

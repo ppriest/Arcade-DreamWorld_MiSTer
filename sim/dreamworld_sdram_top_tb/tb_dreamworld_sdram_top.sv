@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // Integration test for rtl/memory/dreamworld_sdram_top.sv: every sub-piece
 // (sdram.sv, sdram_phy.sv, the arbiters, sdram_narrow_bridge.sv,
@@ -97,19 +98,15 @@ module tb_dreamworld_sdram_top;
 
 	int errors = 0;
 
-	// Pulse ioctl_wr for one cycle, then wait for ioctl_wait to drop --
-	// matches sim/ddram_download_tb/tb_ddram_download.sv's already-proven
-	// send_byte task exactly, including the do/while (not while/do): a
-	// plain `while (ioctl_wait) @(posedge clk);` checks ioctl_wait
-	// immediately after clearing ioctl_wr, in the same active-region delta
-	// as the DUT's own always_ff updating dstate for that same edge --
-	// NBA updates haven't committed yet, so that first check can read a
-	// stale, pre-transition ioctl_wait and return before the real
-	// transaction even starts, silently dropping every other byte in a
-	// back-to-back sequence (found the hard way: half of every 8-byte
-	// write pattern below came back X on first run). do/while guarantees
-	// at least one full edge elapses -- and NBA updates settle -- before
-	// ioctl_wait is ever read.
+	// Pulse ioctl_wr for one cycle, then wait for ioctl_wait to drop. Use
+	// do/while (not while/do): a plain `while (ioctl_wait) @(posedge clk);`
+	// checks ioctl_wait immediately after clearing ioctl_wr, in the same
+	// active-region delta as the DUT's own always_ff updating its state for
+	// that edge -- NBA updates have not committed, so the first check can
+	// read a stale ioctl_wait and return before the transaction starts,
+	// dropping every other byte in a back-to-back sequence (half of every
+	// 8-byte write pattern below came back X on the first run). do/while
+	// guarantees one full edge, and NBA updates, before ioctl_wait is read.
 	// sdram_download coalesces byte pairs into single word writes, so a
 	// lone EVEN byte stays buffered until its odd partner arrives or the
 	// download ends. Tests that write one byte and read it straight back
@@ -238,7 +235,7 @@ module tb_dreamworld_sdram_top;
 		// live on hardware: corrupted/wobbly sprites, worse sp_render_max).
 		// The check above clears sp_gfxrom_req in the SAME simulation delta
 		// it observes valid -- that does NOT reproduce the real consumer's
-		// timing. sprite_render_engine.sv's own always_ff needs a full extra
+		// timing. sprite_line_engine.sv's own always_ff needs a full extra
 		// clock edge just to SEE gfxrom_valid (ordinary register-to-register
 		// latency: it can only react to the value gfxrom_valid held during
 		// the PREVIOUS cycle), and only THEN schedules gfxrom_req<=0 -- so

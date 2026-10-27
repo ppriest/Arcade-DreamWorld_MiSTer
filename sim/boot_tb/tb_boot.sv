@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // A set's boot on maincpu + semicom_mcu, against MAME. The program ROM and the MCU ROM are the
 // set's .mra image (sim/boot_tb/gen_fixture.py); RAM regions are block-RAM models; inputs idle;

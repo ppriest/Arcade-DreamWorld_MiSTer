@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 `timescale 1ns/1ps
 // Whole frames from captured MAME state, through dreamworld_top and the real SDRAM path.
 //
