@@ -668,18 +668,16 @@ issp_probe #(.INSTANCE_ID("L")) u_issp_loader (
 );
 `endif
 
-// ---- HDMI rotation / flip via the HPS framebuffer (sys DDRAM) ----
-// Orientation and the OSD's Flip 180 are handled here, for HDMI only. Flip
-// screen in the video pipeline (dreamworld_core.sv's flip_screen) is
-// separate and reaches the CRT raster as well.
+// ---- HDMI rotation via the HPS framebuffer (sys DDRAM) ----
+// Rotation only, for HDMI. Flip is not done here (.flip is 0): flip_screen
+// (the OSD's Flip Screen XOR the .mra's fake DIP) flips the picture inside
+// dreamworld_core, before this tap, so the CRT and HDMI both show it.
 //
 // screen_rotate_two is Sorgelig's standard MiSTer rotator (GPL v2), taken
-// from Arcade-SKNS_MiSTer. It is a TAP, not a filter:
-// VGA_R/G/B/HS/VS/DE still drive the analog output directly for CRT use,
-// while this writes a rotated (and optionally 180-flipped) copy into DDRAM
-// and points the HPS framebuffer at it for HDMI. So CRT keeps the native
-// raster and HDMI gets rotation and flip, which is why this also gives us
-// flip "for free" without touching the tilemap or sprite paths.
+// from Arcade-SKNS_MiSTer. It is a tap, not a filter: VGA_R/G/B/HS/VS/DE
+// still drive the analog output directly, while this writes a rotated copy
+// into DDRAM and points the HPS framebuffer at it for HDMI. So the CRT gets
+// the native raster, flipped or not, and HDMI the same picture rotated.
 //
 // The rotator owns DDRAM. two_screen is 0 -- an SKNS-specific dual-screen
 // mode.
